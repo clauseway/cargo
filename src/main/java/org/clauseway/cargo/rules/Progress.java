@@ -3,14 +3,11 @@ package org.clauseway.cargo.rules;
 // ABOUTME: The delivery's progress read as rules — every field of dddsample's
 // ABOUTME: Delivery snapshot derived from the history, itinerary and routing.
 
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
-import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
 import org.clauseway.cargo.HandlingType;
@@ -123,10 +120,9 @@ public final class Progress {
 	}
 
 	/**
-	 * What should happen to the cargo next, while on track: receipt at the
-	 * origin before any handling; after receipt, loading onto the first leg;
-	 * after loading, unloading where that leg lands; after unloading, loading
-	 * onto the following leg — or the claim, when there is none.
+	 * What should happen to the cargo next, while on track: the plan's first
+	 * step before any handling, otherwise the step after the one the last
+	 * handling was.
 	 */
 	public Literal nextExpectedActivity(Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<String> voyageNumber) {
@@ -137,32 +133,17 @@ public final class Progress {
 				.arg("voyageNumber", voyageNumber)
 				.solving(onTrack(trackingId)
 						.and(exclude(history.anyEvent(trackingId))
-								.and(type.unifies(HandlingType.RECEIVE))
-								.and(routeSpecification(db, trackingId, location, lvar(), lvar()))
-								.and(voyageNumber.unifies(NO_VOYAGE))
-								.or(history.lastEvent(trackingId, lval(HandlingType.RECEIVE), lvar(), lvar(), lvar())
-										.and(type.unifies(HandlingType.LOAD))
-										.and(itinerary.firstLeg(trackingId, voyageNumber, location, lvar(), lvar(), lvar())))
+								.and(itinerary.plannedHandling(trackingId, lval(0), type, location, voyageNumber))
 								.or(defer(() -> {
-									Unifiable<String> loadedAt = lvar();
-									return history.lastEvent(trackingId, lval(HandlingType.LOAD), loadedAt, lvar(), lvar())
-											.and(type.unifies(HandlingType.UNLOAD))
-											.and(leg(db, trackingId, lvar(), voyageNumber, loadedAt, location, lvar(), lvar()));
-								}))
-								.or(defer(() -> {
-									Unifiable<String> unloadedAt = lvar();
-									Unifiable<Integer> index = lvar();
+									Unifiable<HandlingType> lastType = lvar();
+									Unifiable<String> lastLocation = lvar();
+									Unifiable<String> lastVoyage = lvar();
+									Unifiable<Integer> step = lvar();
 									Unifiable<Integer> next = lvar();
-									return history.lastEvent(trackingId, lval(HandlingType.UNLOAD), unloadedAt, lvar(), lvar())
-											.and(leg(db, trackingId, index, lvar(), lvar(), unloadedAt, lvar(), lvar()))
-											.and(Ints.addo(index, lval(1), next))
-											.and(leg(db, trackingId, next, voyageNumber, location, lvar(), lvar(), lvar())
-													.and(type.unifies(HandlingType.LOAD))
-													.or(exclude(leg(db, trackingId, next, projected(), projected(), projected(),
-															projected(), projected()))
-															.and(type.unifies(HandlingType.CLAIM))
-															.and(location.unifies(unloadedAt))
-															.and(voyageNumber.unifies(NO_VOYAGE))));
+									return history.lastEvent(trackingId, lastType, lastLocation, lastVoyage, lvar())
+											.and(itinerary.plannedHandling(trackingId, step, lastType, lastLocation, lastVoyage))
+											.and(Ints.addo(step, lval(1), next))
+											.and(itinerary.plannedHandling(trackingId, next, type, location, voyageNumber));
 								}))));
 	}
 }

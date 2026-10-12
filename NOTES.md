@@ -204,6 +204,45 @@ with only assert-after-retract-of-a-base-fact as the refusal? That would
 make "replace" a single-transaction operation. Not changed here — it is a
 pldb decision, and the refusal is receipted as a test.
 
+## 5. The refactor from entry 3: the invariant stated once, the functions become one-liners
+
+Done as its own diff on the same tests (plus one for the new relation);
+nothing else moved, every test passed first run.
+
+`plannedHandling(c, step, type, location, voyage)` is the itinerary as a
+sequence of handlings: RECEIVE at the first leg's port is step 0, the leg
+at index i plans LOAD at 2i+1 and UNLOAD at 2i+2, CLAIM where the last leg
+lands is one more (`Ints.multo` and `addo`, forward from the index; with
+the step bound the same arithmetic is a check, because the leg literal
+enumerates first). Over it:
+
+- `expected` is "not routed, or planned at some step, or customs" — the
+  five typed disjuncts transcribed from `isExpected`'s `switch` are gone.
+- `nextExpectedActivity` is "step 0 before any handling, else the step
+  after the one the last handling was": `lastEvent` ∧ `plannedHandling` ∧
+  `addo(step, 1, next)` ∧ `plannedHandling(next)`. The four `case` arms
+  with their two `for` loops and the index+1 negation are gone; 40 lines
+  became 12. The CLAIM and CUSTOMS arms that returned `NO_ACTIVITY` need no
+  spelling: a claim has no next step and customs is at none, so the rule
+  has no answer.
+- `handlingKind(type, voyageRequired)` is the enum's flag read as a table,
+  built from `HandlingType.values()`; the denial says "requires a voyage
+  and names none" instead of enumerating the kinds a second time.
+- `planOf(c)` on the facade — the question dddsample has no function for —
+  is a `select` over the new relation. Nothing else was needed.
+
+One difference from the port worth stating. Before any handling, dddsample
+expects RECEIVE at the *specification's* origin; the plan says the *first
+leg's* port. The rule only fires on track, and ROUTED means `satisfied`,
+which includes "first leg loads at the origin", so the two agree exactly
+where the rule applies. The port had copied the function's choice of
+which fact to read; the plan reads the one the invariant is about.
+
+And one smell left where it was found: `lastLeg` and `plannedHandling`'s
+CLAIM branch both need "the index of the last leg", so that negation is
+now a relation of its own, `lastIndex`, used by both — the second copy
+(in the old `nextExpectedActivity`) is gone with the arms.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named

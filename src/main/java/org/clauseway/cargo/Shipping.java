@@ -222,6 +222,20 @@ public final class Shipping implements AutoCloseable {
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
+	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
+	public List<HandlingActivity> planOf(String trackingId) {
+		Unifiable<Integer> step = lvar();
+		Unifiable<HandlingType> type = lvar();
+		Unifiable<String> location = lvar();
+		Unifiable<String> voyageNumber = lvar();
+		return Query.of(itinerary.plannedHandling(lval(trackingId), step, type, location, voyageNumber))
+				.select(step, type, location, voyageNumber).rows()
+				.sorted(Comparator.comparing((Row row) -> row.get(step).get()))
+				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
+						row.get(voyageNumber).get()))
+				.collect(Collectors.toList());
+	}
+
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
 		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),

@@ -1,8 +1,9 @@
 package org.clauseway.cargo.rules;
 
 // ABOUTME: The itinerary read as rules: its first and last legs by index, and
-// ABOUTME: which handling it accounts for — dddsample's Itinerary.isExpected.
+// ABOUTME: the sequence of handlings it plans — which is what it accounts for.
 
+import static org.clauseway.cargo.Schema.NO_VOYAGE;
 import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
@@ -45,12 +46,23 @@ public final class Itinerary {
 				.solving(leg(db, trackingId, lval(0), voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime));
 	}
 
-	/** The itinerary's last leg: one with no leg at the next index. */
+	/** The index of the itinerary's last leg: one with no leg at the next index. */
+	public Literal lastIndex(Unifiable<String> trackingId, Unifiable<Integer> index) {
+		Unifiable<Integer> next = lvar();
+		return Literal.relation(Itinerary.class, "lastIndex")
+				.arg("trackingId", trackingId)
+				.arg("index", index)
+				.solving(leg(db, trackingId, index, lvar(), lvar(), lvar(), lvar(), lvar())
+						.and(Ints.addo(index, lval(1), next))
+						.and(exclude(leg(db, trackingId, next, projected(), projected(), projected(),
+								projected(), projected()))));
+	}
+
+	/** The itinerary's last leg. */
 	public Literal lastLeg(Unifiable<String> trackingId, Unifiable<String> voyageNumber,
 			Unifiable<String> loadLocation, Unifiable<String> unloadLocation,
 			Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
 		Unifiable<Integer> index = lvar();
-		Unifiable<Integer> next = lvar();
 		return Literal.relation(Itinerary.class, "lastLeg")
 				.arg("trackingId", trackingId)
 				.arg("voyageNumber", voyageNumber)
@@ -59,16 +71,49 @@ public final class Itinerary {
 				.arg("loadTime", loadTime)
 				.arg("unloadTime", unloadTime)
 				.solving(leg(db, trackingId, index, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime)
-						.and(Ints.addo(index, lval(1), next))
-						.and(exclude(leg(db, trackingId, next, projected(), projected(), projected(),
-								projected(), projected()))));
+						.and(lastIndex(trackingId, index)));
 	}
 
 	/**
-	 * The handling the itinerary accounts for — a receipt at the first leg's
-	 * port, a load or unload at a leg's port on that leg's voyage, a claim at
-	 * the last leg's port, customs anywhere; and everything, for a cargo with
-	 * no itinerary.
+	 * The sequence of handlings the itinerary plans: a receipt at the first
+	 * leg's port (step 0); for the leg at index i, a load at its port on its
+	 * voyage (step 2i+1) and an unload where it lands (step 2i+2); and a
+	 * claim where the last leg lands. Customs is not planned; it may happen
+	 * anywhere.
+	 */
+	public Literal plannedHandling(Unifiable<String> trackingId, Unifiable<Integer> step,
+			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<String> voyageNumber) {
+		Unifiable<Integer> index = lvar();
+		Unifiable<Integer> twice = lvar();
+		return Literal.relation(Itinerary.class, "plannedHandling")
+				.arg("trackingId", trackingId)
+				.arg("step", step)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.solving(type.unifies(HandlingType.RECEIVE)
+						.and(firstLeg(trackingId, lvar(), location, lvar(), lvar(), lvar()))
+						.and(step.unifies(0))
+						.and(voyageNumber.unifies(NO_VOYAGE))
+						.or(type.unifies(HandlingType.LOAD)
+								.and(leg(db, trackingId, index, voyageNumber, location, lvar(), lvar(), lvar()))
+								.and(Ints.multo(index, lval(2), twice))
+								.and(Ints.addo(twice, lval(1), step)))
+						.or(type.unifies(HandlingType.UNLOAD)
+								.and(leg(db, trackingId, index, voyageNumber, lvar(), location, lvar(), lvar()))
+								.and(Ints.multo(index, lval(2), twice))
+								.and(Ints.addo(twice, lval(2), step)))
+						.or(type.unifies(HandlingType.CLAIM)
+								.and(leg(db, trackingId, index, lvar(), lvar(), location, lvar(), lvar()))
+								.and(lastIndex(trackingId, index))
+								.and(Ints.multo(index, lval(2), twice))
+								.and(Ints.addo(twice, lval(3), step))
+								.and(voyageNumber.unifies(NO_VOYAGE))));
+	}
+
+	/**
+	 * The handling the itinerary accounts for: a planned one, customs
+	 * anywhere; and everything, for a cargo with no itinerary.
 	 */
 	public Literal expected(Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<String> voyageNumber) {
@@ -78,14 +123,7 @@ public final class Itinerary {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.solving(exclude(anyLeg(trackingId))
-						.or(type.unifies(HandlingType.RECEIVE)
-								.and(firstLeg(trackingId, lvar(), location, lvar(), lvar(), lvar())))
-						.or(type.unifies(HandlingType.LOAD)
-								.and(leg(db, trackingId, lvar(), voyageNumber, location, lvar(), lvar(), lvar())))
-						.or(type.unifies(HandlingType.UNLOAD)
-								.and(leg(db, trackingId, lvar(), voyageNumber, lvar(), location, lvar(), lvar())))
-						.or(type.unifies(HandlingType.CLAIM)
-								.and(lastLeg(trackingId, lvar(), lvar(), location, lvar(), lvar())))
+						.or(plannedHandling(trackingId, lvar(), type, location, voyageNumber))
 						.or(type.unifies(HandlingType.CUSTOMS)));
 	}
 }

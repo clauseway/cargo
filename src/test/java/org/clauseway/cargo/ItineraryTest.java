@@ -94,6 +94,19 @@ public class ItineraryTest {
 		assertThat(booked().isExpected("CARGO1", event(UNLOAD, HELSINKI, WRONG_VOYAGE))).isTrue();
 	}
 
+	/** The sequence of handlings the itinerary plans, in order — the one invariant behind isExpected and the next activity. */
+	@Test
+	public void thePlannedHandlings() {
+		assertThat(routed().planOf("CARGO1")).containsExactly(
+				new HandlingActivity(RECEIVE, SHANGHAI, NO_VOYAGE),
+				new HandlingActivity(LOAD, SHANGHAI, VOYAGE),
+				new HandlingActivity(UNLOAD, ROTTERDAM, VOYAGE),
+				new HandlingActivity(LOAD, ROTTERDAM, VOYAGE),
+				new HandlingActivity(UNLOAD, GOTHENBURG, VOYAGE),
+				new HandlingActivity(CLAIM, GOTHENBURG, NO_VOYAGE));
+		assertThat(booked().planOf("CARGO1")).isEmpty();
+	}
+
 	@Test
 	public void theFirstAndLastLegs() {
 		Shipping s = routed();

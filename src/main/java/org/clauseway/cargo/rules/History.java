@@ -8,15 +8,18 @@ import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
 import static org.clauseway.cargo.Schema.voyage;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
+import java.util.Arrays;
 import org.clauseway.cargo.HandlingType;
 import org.clauseway.cargo.Schema;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
 
 public final class History {
@@ -44,12 +47,26 @@ public final class History {
 						.and(Instants.lss(time, completed)));
 	}
 
+	/** Whether a handling kind names a voyage: the enum's flag, as a relation over its own facts. */
+	private static Literal handlingKind(AnswerSource table, Unifiable<HandlingType> type,
+			Unifiable<Boolean> voyageRequired) {
+		return Literal.relation(History.class, "handlingKind")
+				.arg("type", type)
+				.arg("voyageRequired", voyageRequired)
+				.from(table);
+	}
+
+	private static final AnswerStore HANDLING_KINDS = AnswerStore.empty().asserting(
+			Arrays.stream(HandlingType.values())
+					.map(type -> handlingKind(null, lval(type), lval(type.requiresVoyage())))
+					.toArray(Literal[]::new));
+
 	/**
 	 * HandlingEventFactory and the HandlingEvent constructors as one
 	 * complement: every rule a registration would violate, by name. The
-	 * cargo, the port and the voyage must be known; a load or unload names
-	 * its voyage, the port-side kinds name none. Registration is allowed
-	 * when there are no denials.
+	 * cargo, the port and the voyage must be known; a kind that requires a
+	 * voyage names one, the others name none. Registration is allowed when
+	 * there are no denials.
 	 */
 	public Literal registrationDenial(Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<String> voyageNumber, Unifiable<String> reason) {
@@ -66,11 +83,10 @@ public final class History {
 						.or(exclude(voyageNumber.unifies(NO_VOYAGE))
 								.and(exclude(voyage(db, voyageNumber)))
 								.and(reason.unifies("unknown voyage")))
-						.or(type.unifies(HandlingType.LOAD).or(type.unifies(HandlingType.UNLOAD))
+						.or(handlingKind(HANDLING_KINDS, type, lval(true))
 								.and(voyageNumber.unifies(NO_VOYAGE))
 								.and(reason.unifies("voyage required")))
-						.or(type.unifies(HandlingType.RECEIVE).or(type.unifies(HandlingType.CLAIM))
-								.or(type.unifies(HandlingType.CUSTOMS))
+						.or(handlingKind(HANDLING_KINDS, type, lval(false))
 								.and(exclude(voyageNumber.unifies(NO_VOYAGE)))
 								.and(reason.unifies("voyage prohibited"))));
 	}
