@@ -13,6 +13,9 @@ import org.clauseway.pldb.relations.Literal;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Schema {
 
+	/** The voyage of a port-side handling: none, as the empty number. */
+	public static final String NO_VOYAGE = "";
+
 	/** A port, by UN/LOCODE. */
 	public static Literal location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
 		return Literal.relation(Schema.class, "location")

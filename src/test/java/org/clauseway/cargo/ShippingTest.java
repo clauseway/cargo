@@ -54,7 +54,7 @@ public class ShippingTest {
 				.withHandlingEvent("ABC", HandlingType.RECEIVE, "SESTO", hour(0), hour(0))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "V100", hour(1), hour(2));
 		assertThat(handled.handlingHistoryOf("ABC")).containsExactly(
-				new HandlingEvent(HandlingType.RECEIVE, "SESTO", Shipping.NO_VOYAGE, hour(0)),
+				new HandlingEvent(HandlingType.RECEIVE, "SESTO", Schema.NO_VOYAGE, hour(0)),
 				new HandlingEvent(HandlingType.LOAD, "SESTO", "V100", hour(1)));
 		assertThat(handled.handlingHistoryOf("XYZ")).isEmpty();
 	}

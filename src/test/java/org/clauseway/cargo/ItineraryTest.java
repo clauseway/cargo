@@ -10,7 +10,7 @@ import static org.clauseway.cargo.HandlingType.LOAD;
 import static org.clauseway.cargo.HandlingType.RECEIVE;
 import static org.clauseway.cargo.HandlingType.UNLOAD;
 import static org.clauseway.cargo.Hours.hour;
-import static org.clauseway.cargo.Shipping.NO_VOYAGE;
+import static org.clauseway.cargo.Schema.NO_VOYAGE;
 
 import java.util.Arrays;
 import org.junit.Test;

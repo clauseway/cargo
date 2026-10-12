@@ -3,6 +3,7 @@ package org.clauseway.cargo;
 // ABOUTME: The shipping domain facade — an immutable fact base over one
 // ABOUTME: transaction: booking, routing and handling land as facts, reads are solves.
 
+import static org.clauseway.cargo.Schema.NO_VOYAGE;
 import static org.clauseway.cargo.Schema.carrierMovement;
 import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
@@ -20,6 +21,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.clauseway.cargo.rules.History;
+import org.clauseway.cargo.rules.Itinerary;
+import org.clauseway.cargo.rules.Progress;
+import org.clauseway.cargo.rules.Routing;
 import org.clauseway.functional.Nothing;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
@@ -32,15 +37,18 @@ import org.clauseway.vavr.control.Try;
 
 public final class Shipping implements AutoCloseable {
 
-	/** The voyage of a port-side handling: none, as the empty number. */
-	public static final String NO_VOYAGE = "";
-
 	private final Transaction db;
-	private final Rules rules;
+	private final History history;
+	private final Itinerary itinerary;
+	private final Routing routing;
+	private final Progress progress;
 
 	private Shipping(Transaction db) {
 		this.db = db;
-		this.rules = new Rules(db);
+		this.history = new History(db);
+		this.itinerary = new Itinerary(db);
+		this.routing = new Routing(db, itinerary);
+		this.progress = new Progress(db, history, itinerary, routing);
 	}
 
 	/** A private one-history world — the pure-value mode for tests and demos. */
@@ -145,25 +153,25 @@ public final class Shipping implements AutoCloseable {
 
 	public Optional<Leg> firstLegOf(String trackingId) {
 		LegColumns c = new LegColumns();
-		return c.legs(c.select(rules.firstLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+		return c.legs(c.select(itinerary.firstLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
 				.findFirst();
 	}
 
 	public Optional<Leg> lastLegOf(String trackingId) {
 		LegColumns c = new LegColumns();
-		return c.legs(c.select(rules.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+		return c.legs(c.select(itinerary.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
 				.findFirst();
 	}
 
 	public RoutingStatus routingStatusOf(String trackingId) {
 		Unifiable<RoutingStatus> status = lvar();
-		return first(rules.routingStatus(lval(trackingId), status), status)
+		return first(routing.routingStatus(lval(trackingId), status), status)
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
-		return holds(rules.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
+		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				lval(event.getVoyageNumber())));
 	}
 
@@ -176,21 +184,21 @@ public final class Shipping implements AutoCloseable {
 		Unifiable<Instant> eta = lvar();
 		return new Delivery(
 				routingStatusOf(trackingId),
-				first(rules.transportStatus(id, transport), transport)
+				first(progress.transportStatus(id, transport), transport)
 						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
-				first(rules.lastKnownLocation(id, location), location),
-				first(rules.currentVoyage(id, voyageNumber), voyageNumber),
-				holds(rules.misdirected(id)),
-				first(rules.eta(id, eta), eta),
+				first(progress.lastKnownLocation(id, location), location),
+				first(progress.currentVoyage(id, voyageNumber), voyageNumber),
+				holds(progress.misdirected(id)),
+				first(progress.eta(id, eta), eta),
 				nextExpectedActivityOf(trackingId),
-				holds(rules.unloadedAtDestination(id)));
+				holds(progress.unloadedAtDestination(id)));
 	}
 
 	private Optional<HandlingActivity> nextExpectedActivityOf(String trackingId) {
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
 		Unifiable<String> voyageNumber = lvar();
-		return Query.of(rules.nextExpectedActivity(lval(trackingId), type, location, voyageNumber))
+		return Query.of(progress.nextExpectedActivity(lval(trackingId), type, location, voyageNumber))
 				.select(type, location, voyageNumber).rows()
 				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
 						row.get(voyageNumber).get()))
@@ -243,7 +251,7 @@ public final class Shipping implements AutoCloseable {
 		Unifiable<String> location = lvar();
 		Unifiable<String> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
-		return events(Query.of(rules.lastEvent(lval(trackingId), type, location, voyageNumber, completed))
+		return events(Query.of(history.lastEvent(lval(trackingId), type, location, voyageNumber, completed))
 				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
 				.findFirst();
 	}

@@ -110,6 +110,32 @@ nothing is calculated and stored, so nothing is stale.
   five facts in a static `AnswerStore`, read with the same literal as any
   other relation. The `switch` became a table; worth keeping as an idiom.
 
+## 2. The rules read as a soup; part of that is essential, part is ceremony
+
+After five slices the rules were one 300-line file, and Tom's reading was
+"a soup that's hard to follow — but they interrelate freely, which may be
+the point". Separating the two:
+
+Essential, and the strength: dddsample wires the same logic by call order
+(the `Delivery` constructor computes `misdirected` before `onTrack()` reads
+it; `deriveDeliveryProgress` must run at the right moment or the snapshot is
+stale). The rules have no order and no trigger; each one is queryable alone
+and a new one composes with the rest without editing them. The flatness is
+what makes derived state always current.
+
+Accidental, fixed: one file for four of dddsample's concepts. The rules now
+live in `rules/` as `History` ← `Itinerary` ← `Routing` ← `Progress`, the
+same grouping as dddsample's packages, with the dependency direction visible
+as constructor arguments; each file reads bottom-up.
+
+Accidental, not fixed — the ceremony: every rule declares its columns twice
+(Java parameters, then `.arg("x", x)` each), don't-care columns are
+`lvar(), lvar(), lvar()`, and fresh locals need a `defer(() -> {…})` block.
+None of that is relational structure; it is Java-hosted miniKanren syntax.
+What the engine would need: a don't-care marker and a positional head would
+remove most of it. Noted, not built — the shape is right, the spelling is
+long.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named
