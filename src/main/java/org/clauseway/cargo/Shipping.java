@@ -135,17 +135,47 @@ public final class Shipping implements AutoCloseable {
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
 	public List<Leg> itineraryOf(String trackingId) {
 		Unifiable<Integer> index = lvar();
-		Unifiable<String> voyageNumber = lvar();
-		Unifiable<String> load = lvar();
-		Unifiable<String> unload = lvar();
-		Unifiable<Instant> loadTime = lvar();
-		Unifiable<Instant> unloadTime = lvar();
-		return Query.of(leg(db, lval(trackingId), index, voyageNumber, load, unload, loadTime, unloadTime))
-				.select(index, voyageNumber, load, unload, loadTime, unloadTime).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(index).get()))
-				.map(row -> new Leg(row.get(voyageNumber).get(), row.get(load).get(), row.get(unload).get(),
-						row.get(loadTime).get(), row.get(unloadTime).get()))
+		LegColumns c = new LegColumns();
+		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
+				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
+				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
 				.collect(Collectors.toList());
+	}
+
+	public Optional<Leg> firstLegOf(String trackingId) {
+		LegColumns c = new LegColumns();
+		return c.legs(c.select(rules.firstLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+				.findFirst();
+	}
+
+	public Optional<Leg> lastLegOf(String trackingId) {
+		LegColumns c = new LegColumns();
+		return c.legs(c.select(rules.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+				.findFirst();
+	}
+
+	/** Whether the cargo's itinerary accounts for the handling. */
+	public boolean isExpected(String trackingId, HandlingEvent event) {
+		return Query.of(rules.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
+				lval(event.getVoyageNumber()))).solve(lval(trackingId)).findAny().isPresent();
+	}
+
+	/** The variables of one leg's columns and the row-to-value reading over them. */
+	private static final class LegColumns {
+		final Unifiable<String> voyageNumber = lvar();
+		final Unifiable<String> load = lvar();
+		final Unifiable<String> unload = lvar();
+		final Unifiable<Instant> loadTime = lvar();
+		final Unifiable<Instant> unloadTime = lvar();
+
+		Stream<Row> select(Literal legs) {
+			return Query.of(legs).select(voyageNumber, load, unload, loadTime, unloadTime).rows();
+		}
+
+		Stream<Leg> legs(Stream<Row> rows) {
+			return rows.map(row -> new Leg(row.get(voyageNumber).get(), row.get(load).get(), row.get(unload).get(),
+					row.get(loadTime).get(), row.get(unloadTime).get()));
+		}
 	}
 
 	/** The cargo's handling events, distinct, in completion order. */

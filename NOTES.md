@@ -58,6 +58,24 @@ leaves `registrationTime` out of its head gets dddsample's `equals` for free.
 What dddsample does in `equals` + `HashSet` is, relationally, projection —
 a thing every rule does anyway. What the engine would need: nothing.
 
+## P1 graded: ordered sequences — milder than predicted
+
+The itinerary's order is an `index` column. "First" is index 0; "last" is a
+leg with no leg at index+1 — `Ints.addo(index, 1, next)` then
+`exclude(leg(c, next, …))`, with `projected()` on the columns the negation
+does not care about. Three lines, correct first run, and `expected`
+(`Itinerary.isExpected`) reads as five disjuncts naming the five handling
+kinds, one per branch of the original `if` chain. The one concession is that
+the itinerary is written with an index the OO list carried implicitly, and
+the facade sorts legs by it on the Java side (no `order by` in the engine).
+Not a friction yet; "the leg after this one" in `nextExpectedActivity` is
+the remaining P1 test.
+
+- dddsample refuses an empty itinerary in the constructor; here an
+  itinerary with no legs is simply the unrouted state (`¬anyLeg`), which is
+  what `Delivery` calls NOT_ROUTED. A value-object guard that says "this value
+  may not be empty" has no counterpart because the empty value is absence.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named
