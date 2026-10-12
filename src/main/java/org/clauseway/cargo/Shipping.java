@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 import org.clauseway.functional.Nothing;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.relations.Literal;
@@ -152,6 +153,13 @@ public final class Shipping implements AutoCloseable {
 		LegColumns c = new LegColumns();
 		return c.legs(c.select(rules.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
 				.findFirst();
+	}
+
+	public RoutingStatus routingStatusOf(String trackingId) {
+		Unifiable<RoutingStatus> status = lvar();
+		return Query.of(rules.routingStatus(lval(trackingId), status)).solve(status)
+				.findFirst().map(Reified::get)
+				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */

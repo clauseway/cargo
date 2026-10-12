@@ -5,6 +5,7 @@ package org.clauseway.cargo;
 
 import static org.clauseway.cargo.Schema.handlingEvent;
 import static org.clauseway.cargo.Schema.leg;
+import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
@@ -96,6 +97,34 @@ final class Rules {
 						.or(type.unifies(HandlingType.CLAIM)
 								.and(lastLeg(trackingId, lvar(), lvar(), location, lvar(), lvar())))
 						.or(type.unifies(HandlingType.CUSTOMS)));
+	}
+
+	/**
+	 * RouteSpecification.isSatisfiedBy: the itinerary starts at the specified
+	 * origin, ends at the specified destination, and lands before the deadline.
+	 */
+	Literal satisfied(Unifiable<String> trackingId) {
+		Unifiable<String> origin = lvar();
+		Unifiable<String> destination = lvar();
+		Unifiable<Instant> deadline = lvar();
+		Unifiable<Instant> finalArrival = lvar();
+		return Literal.relation(Rules.class, "satisfied")
+				.arg("trackingId", trackingId)
+				.solving(routeSpecification(db, trackingId, origin, destination, deadline)
+						.and(firstLeg(trackingId, lvar(), origin, lvar(), lvar(), lvar()))
+						.and(lastLeg(trackingId, lvar(), lvar(), destination, lvar(), finalArrival))
+						.and(Instants.lss(finalArrival, deadline)));
+	}
+
+	/** Not routed without an itinerary; routed when it satisfies the specification; misrouted otherwise. */
+	Literal routingStatus(Unifiable<String> trackingId, Unifiable<RoutingStatus> status) {
+		return Literal.relation(Rules.class, "routingStatus")
+				.arg("trackingId", trackingId)
+				.arg("status", status)
+				.solving(exclude(anyLeg(trackingId)).and(status.unifies(RoutingStatus.NOT_ROUTED))
+						.or(satisfied(trackingId).and(status.unifies(RoutingStatus.ROUTED)))
+						.or(anyLeg(trackingId).and(exclude(satisfied(trackingId)))
+								.and(status.unifies(RoutingStatus.MISROUTED))));
 	}
 
 	/** The most recently completed handling: an event with none later. */

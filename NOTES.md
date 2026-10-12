@@ -76,6 +76,12 @@ the remaining P1 test.
   what `Delivery` calls NOT_ROUTED. A value-object guard that says "this value
   may not be empty" has no counterpart because the empty value is absence.
 
+- An `if / else if / else` chain over a status (`calculateRoutingStatus`)
+  becomes three disjuncts, and the `else` has to be said in full:
+  `anyLeg ∧ ¬satisfied → MISROUTED`. Nothing falls through. Slightly more to
+  write, and the three cases are visibly exhaustive and exclusive, which the
+  chain only was by reading order.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named
