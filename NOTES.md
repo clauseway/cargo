@@ -40,24 +40,23 @@ as informative as one that does.
   `Voyage.NONE` with the empty voyage number, rather than a nullable column.
   P3 stays open for the derived side.
 - dddsample dedups handling events by value (`distinctEventsByCompletionTime`
-  through a `HashSet`). Facts are values here, so that dedup is free — once
-  the event's identity and its registration are separate facts (entry 1).
+  through a `HashSet`). Facts are values here, so that dedup is free (entry 1).
 
-## 1. An entity's identity is a subset of its columns
+## 1. Identity is the rule head's projection
 
-dddsample's `HandlingEvent.sameEventAs` compares cargo, voyage, completion
-time, location and type — and NOT `registrationTime`; `HandlingHistoryTest`
-registers one event twice at different times and expects one event. Had I
-kept `registrationTime` on `handlingEvent`, the two registrations would be two
-facts and "last event" would have two answers at the same completion time. Had
-to: split the row along the identity line — `handlingEvent(…identity…)` and
-`registration(…identity…, registrationTime)` — so re-registering states the
-same event fact and one more registration fact. That is the relational-normal
-answer and arguably the better model (dddsample stores the duplicate and
-dedups on read), but it is a decision the engine forces at schema time where
-an OO model makes it in `equals`. What the engine would need: nothing — a
-relation with a declared key would let the one row keep its attributes, but
-that is a schema feature, not a gap.
+dddsample's `HandlingEvent` carries two clocks — `completionTime` (when the
+handling happened) and `registrationTime` (when the report of it arrived; the
+reports come late and sometimes twice from terminals' logging systems) — and
+`sameEventAs` deliberately ignores the second, so `HandlingHistoryTest`
+registers one handling twice and expects one event. My first reading: the
+engine would see two rows and "last event" would answer twice; I split the
+row into `handlingEvent(identity)` + `registration(identity, time)`. Wrong, as
+Tom pointed out: `lastEvent`'s head names five columns and not the sixth, so
+both rows derive the SAME answer and a derived relation's answers are a set.
+The split was unnecessary; one row with both clocks, and every rule that
+leaves `registrationTime` out of its head gets dddsample's `equals` for free.
+What dddsample does in `equals` + `HashSet` is, relationally, projection —
+a thing every rule does anyway. What the engine would need: nothing.
 
 ## Non-event: an FD comparison under negation
 

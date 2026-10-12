@@ -76,27 +76,15 @@ public final class Schema {
 	}
 
 	/**
-	 * A handling event — what happened to the cargo, where, when; the voyage
-	 * is the empty number for the port-side kinds. These columns ARE the
-	 * event's identity: registering it again states the same fact.
+	 * A handling event as reported — what happened to the cargo, where, when
+	 * it happened and when the report arrived; the voyage is the empty number
+	 * for the port-side kinds. A handling reported twice is two rows; every
+	 * rule projects the registration time away, so it is one event.
 	 */
 	public static Literal handlingEvent(AnswerSource db, Unifiable<String> trackingId,
 			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<String> voyageNumber,
-			Unifiable<Instant> completionTime) {
-		return Literal.relation(Schema.class, "handlingEvent")
-				.arg("trackingId", trackingId).indexed()
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.arg("completionTime", completionTime)
-				.from(db);
-	}
-
-	/** One report of a handling event reaching the system; an event may be reported more than once. */
-	public static Literal registration(AnswerSource db, Unifiable<String> trackingId,
-			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<String> voyageNumber,
 			Unifiable<Instant> completionTime, Unifiable<Instant> registrationTime) {
-		return Literal.relation(Schema.class, "registration")
+		return Literal.relation(Schema.class, "handlingEvent")
 				.arg("trackingId", trackingId).indexed()
 				.arg("type", type)
 				.arg("location", location)

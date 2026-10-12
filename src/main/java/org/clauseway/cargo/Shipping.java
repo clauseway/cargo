@@ -8,7 +8,6 @@ import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
 import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.cargo.Schema.location;
-import static org.clauseway.cargo.Schema.registration;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.cargo.Schema.voyage;
 import static org.clauseway.logic.unification.terms.LVal.lval;
@@ -102,13 +101,10 @@ public final class Shipping implements AutoCloseable {
 		return withHandlingEvent(trackingId, type, location, NO_VOYAGE, completionTime, registrationTime);
 	}
 
-	/** The event is one fact, the report of it another: a second report adds only a registration. */
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			String voyageNumber, Instant completionTime, Instant registrationTime) {
 		return with(handlingEvent(db, lval(trackingId), lval(type), lval(location), lval(voyageNumber),
-						lval(completionTime)),
-				registration(db, lval(trackingId), lval(type), lval(location), lval(voyageNumber),
-						lval(completionTime), lval(registrationTime)));
+				lval(completionTime), lval(registrationTime)));
 	}
 
 	private Shipping with(Literal... rows) {
@@ -158,7 +154,7 @@ public final class Shipping implements AutoCloseable {
 		Unifiable<String> location = lvar();
 		Unifiable<String> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
-		return events(Query.of(handlingEvent(db, lval(trackingId), type, location, voyageNumber, completed))
+		return events(Query.of(handlingEvent(db, lval(trackingId), type, location, voyageNumber, completed, lvar()))
 				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
 				.sorted(Comparator.comparing(HandlingEvent::getCompletionTime))
 				.collect(Collectors.toList());

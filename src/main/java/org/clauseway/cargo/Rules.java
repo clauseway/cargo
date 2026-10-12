@@ -27,7 +27,7 @@ final class Rules {
 		return Literal.relation(Rules.class, "later")
 				.arg("trackingId", trackingId)
 				.arg("time", time)
-				.solving(handlingEvent(db, trackingId, lvar(), lvar(), lvar(), completed)
+				.solving(handlingEvent(db, trackingId, lvar(), lvar(), lvar(), completed, lvar())
 						.and(Instants.lss(time, completed)));
 	}
 
@@ -40,7 +40,7 @@ final class Rules {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("completed", completed)
-				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed)
+				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, lvar())
 						.and(exclude(later(trackingId, completed))));
 	}
 }
