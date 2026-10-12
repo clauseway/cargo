@@ -136,6 +136,51 @@ What the engine would need: a don't-care marker and a positional head would
 remove most of it. Noted, not built — the shape is right, the spelling is
 long.
 
+## 3. The port is too literal: one invariant, written twice, in two directions
+
+Tom's question, after reading the delivery rules: where does the original
+pay for control — an invariant kept implicit and re-implemented as separate
+functions for each direction it is used in — while the relational model
+states it once and queries it any way round? The first answer I gave was
+about recomputation; that is performance, not what was asked. The answer:
+
+- `Itinerary.isExpected(event)` and `Delivery.calculateNextExpectedActivity`
+  are the same invariant — the itinerary determines the sequence of handlings:
+  receipt at the first load port, then per leg a load and an unload on that
+  voyage, then a claim at the last unload port — written twice, as a
+  membership walk over the legs and as a successor walk over the legs, with a
+  different `switch` each. The sequence itself is stated in neither; it is
+  implicit in both bodies, and a rule added to one has to be re-derived in
+  the other by hand.
+- `HandlingEvent`'s two constructors enforce "LOAD/UNLOAD carry a voyage, the
+  rest must not"; `isExpected` assumes it by comparing voyages only for those
+  two. Enforced in one place, relied on in another, stated in neither.
+- `RouteSpecification.isSatisfiedBy` (given an itinerary, does it fit?) and
+  `RoutingService.fetchRoutesForSpecification` (given a specification, which
+  itineraries fit?) are one invariant in its checking and its generating
+  direction — the second one outsourced to a pathfinder plus a filter.
+
+And the port, so far, reproduces the first two one-for-one: `expected` and
+`nextExpectedActivity` are two rules transcribed from two functions, and the
+voyage convention is a comment on `handlingEvent`. The translation was
+faithful to the functions where it should have been faithful to the
+invariant. What it should be: one relation `plannedHandling(c, seq, type,
+location, voyage)` stating the sequence; `expected` is "∃ seq (or customs)",
+the next activity is "the planned handling at the seq after the one the last
+event matched", `misdirected` is "the last event matches no seq", and
+questions dddsample has no function for — how far along the plan a cargo is,
+which cargos are past step three — cost nothing. Likewise one fact relation
+`handlingKind(type, voyageRequired)` for the denial at registration and for
+any rule that needs it; and, in the next phase, one `route(…)` relation over
+`carrierMovement` that generates itineraries forward and checks them with
+the legs bound.
+
+Decision: finish the literal port first — denials, re-routing — so the
+faithful translation is complete and reviewable on its own, then do the
+`plannedHandling` refactor as a separate step with the same tests, so the
+difference between porting the functions and modelling the invariant is one
+diff.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named
