@@ -15,9 +15,11 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -93,10 +95,61 @@ public final class Shipping implements AutoCloseable {
 				lval(arrivalLocation), lval(departureTime), lval(arrivalTime)));
 	}
 
+	// -- commands: denials first, then the facts ---------------------------
+
 	/** Booking: the cargo exists, with its origin and its first requirement. */
-	public Shipping bookCargo(String trackingId, String origin, String destination, Instant arrivalDeadline) {
-		return with(cargo(db, lval(trackingId), lval(origin)),
-				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline)));
+	public Try<Shipping> bookCargo(String trackingId, String origin, String destination, Instant arrivalDeadline) {
+		return command(specificationDenials(origin, destination), () -> with(
+				cargo(db, lval(trackingId), lval(origin)),
+				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))));
+	}
+
+	/** The specification is a value: the old one goes whole, the new one lands; the cargo's origin stays. */
+	public Try<Shipping> specifyNewRoute(String trackingId, String origin, String destination,
+			Instant arrivalDeadline) {
+		Unifiable<String> reason = lvar();
+		List<String> denials = values(Query.of(routing.reroutingDenial(lval(trackingId), lval(origin),
+				lval(destination), reason)).solve(reason));
+		return command(denials, () -> {
+			List<Literal> spent = routeSpecificationOf(trackingId)
+					.map(old -> routeSpecification(db, lval(trackingId), lval(old.getOrigin()),
+							lval(old.getDestination()), lval(old.getArrivalDeadline())))
+					.map(Collections::singletonList).orElse(Collections.emptyList());
+			return new Shipping(db.retracting(spent).asserting(
+					routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))));
+		});
+	}
+
+	/** Registering a handling: HandlingEventFactory's checks, then the fact. */
+	public Try<Shipping> registerHandling(String trackingId, HandlingType type, String location,
+			String voyageNumber, Instant completionTime, Instant registrationTime) {
+		return command(registrationDenials(trackingId, type, location, voyageNumber),
+				() -> withHandlingEvent(trackingId, type, location, voyageNumber, completionTime, registrationTime));
+	}
+
+	/** Every rule the registration would violate, by name; empty means allowed. */
+	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
+			String voyageNumber) {
+		Unifiable<String> reason = lvar();
+		return values(Query.of(history.registrationDenial(lval(trackingId), lval(type), lval(location),
+				lval(voyageNumber), reason)).solve(reason));
+	}
+
+	/** Every rule the specification would violate, by name; empty means allowed. */
+	public List<String> specificationDenials(String origin, String destination) {
+		Unifiable<String> reason = lvar();
+		return values(Query.of(routing.specificationDenial(lval(origin), lval(destination), reason)).solve(reason));
+	}
+
+	private static Try<Shipping> command(List<String> denials, Supplier<Shipping> effect) {
+		if (!denials.isEmpty()) {
+			return Try.failure(new IllegalStateException(String.join("; ", denials)));
+		}
+		return Try.success(effect.get());
+	}
+
+	private static <T> List<T> values(Stream<Reified<T>> answers) {
+		return answers.map(Reified::get).collect(Collectors.toList());
 	}
 
 	/** The itinerary is a value: the old legs go whole, the new ones land in order. */

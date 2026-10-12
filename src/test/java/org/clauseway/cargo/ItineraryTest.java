@@ -35,7 +35,7 @@ public class ItineraryTest {
 				.withVoyage(WRONG_VOYAGE)
 				.withCarrierMovement(WRONG_VOYAGE, NEWYORK, STOCKHOLM, hour(1), hour(2))
 				.withCarrierMovement(WRONG_VOYAGE, STOCKHOLM, HELSINKI, hour(3), hour(4))
-				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10));
+				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get();
 	}
 
 	private static Shipping routed() {

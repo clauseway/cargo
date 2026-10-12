@@ -32,7 +32,7 @@ public class RouteSpecificationTest {
 				.withVoyage("V002")
 				.withCarrierMovement("V002", DALLAS, NEWYORK, hour(6), hour(7))
 				.withCarrierMovement("V002", NEWYORK, CHICAGO, hour(12), hour(20))
-				.bookCargo("ABC", origin, destination, deadline)
+				.bookCargo("ABC", origin, destination, deadline).get()
 				.assignToRoute("ABC", Arrays.asList(
 						new Leg("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
 						new Leg("V002", NEWYORK, CHICAGO, hour(12), hour(20))));
@@ -60,7 +60,7 @@ public class RouteSpecificationTest {
 
 	@Test
 	public void aCargoWithoutAnItineraryIsNotRouted() {
-		Shipping booked = Shipping.empty().bookCargo("ABC", HONGKONG, CHICAGO, hour(30));
+		Shipping booked = Shipping.empty().bookCargo("ABC", HONGKONG, CHICAGO, hour(30)).get();
 		assertThat(booked.routingStatusOf("ABC")).isEqualTo(NOT_ROUTED);
 	}
 }

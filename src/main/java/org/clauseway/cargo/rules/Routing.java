@@ -3,9 +3,11 @@ package org.clauseway.cargo.rules;
 // ABOUTME: The route specification read as rules: whether the itinerary
 // ABOUTME: satisfies it, and the routing status that follows.
 
+import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
 import org.clauseway.cargo.RoutingStatus;
@@ -22,6 +24,30 @@ public final class Routing {
 	public Routing(AnswerSource db, Itinerary itinerary) {
 		this.db = db;
 		this.itinerary = itinerary;
+	}
+
+	/** The RouteSpecification constructor's guard: a route must go somewhere. */
+	public Literal specificationDenial(Unifiable<String> origin, Unifiable<String> destination,
+			Unifiable<String> reason) {
+		return Literal.relation(Routing.class, "specificationDenial")
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
+				.solving(origin.unifies(destination)
+						.and(reason.unifies("origin and destination are the same")));
+	}
+
+	/** Cargo.specifyNewRoute's denials: the cargo must exist, and the specification must hold up. */
+	public Literal reroutingDenial(Unifiable<String> trackingId, Unifiable<String> origin,
+			Unifiable<String> destination, Unifiable<String> reason) {
+		return Literal.relation(Routing.class, "reroutingDenial")
+				.arg("trackingId", trackingId)
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
+				.solving(exclude(cargo(db, trackingId, projected()))
+						.and(reason.unifies("unknown cargo"))
+						.or(specificationDenial(origin, destination, reason)));
 	}
 
 	/**

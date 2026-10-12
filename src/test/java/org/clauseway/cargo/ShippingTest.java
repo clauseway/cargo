@@ -27,7 +27,7 @@ public class ShippingTest {
 
 	@Test
 	public void bookingStatesTheRouteSpecification() {
-		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100));
+		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
 		assertThat(booked.routeSpecificationOf("ABC"))
 				.contains(new RouteSpecification("SESTO", "DEHAM", hour(100)));
 		assertThat(booked.routeSpecificationOf("XYZ")).isEmpty();
@@ -35,14 +35,14 @@ public class ShippingTest {
 
 	@Test
 	public void anUnroutedCargoHasNoLegs() {
-		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100));
+		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
 		assertThat(booked.itineraryOf("ABC")).isEmpty();
 	}
 
 	@Test
 	public void legsReadBackInItineraryOrder() {
 		Shipping routed = world()
-				.bookCargo("ABC", "SESTO", "DEHAM", hour(100))
+				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
 				.assignToRoute("ABC", Arrays.asList(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG));
 		assertThat(routed.itineraryOf("ABC")).containsExactly(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG);
 	}
@@ -50,7 +50,7 @@ public class ShippingTest {
 	@Test
 	public void handlingEventsReadBackByCargo() {
 		Shipping handled = world()
-				.bookCargo("ABC", "SESTO", "DEHAM", hour(100))
+				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
 				.withHandlingEvent("ABC", HandlingType.RECEIVE, "SESTO", hour(0), hour(0))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "V100", hour(1), hour(2));
 		assertThat(handled.handlingHistoryOf("ABC")).containsExactly(

@@ -181,6 +181,29 @@ faithful translation is complete and reviewable on its own, then do the
 difference between porting the functions and modelling the invariant is one
 diff.
 
+## 4. Replacing a value object within the transaction that created it is refused
+
+dddsample's `Cargo.specifyNewRoute` swaps the `RouteSpecification` value in
+place; our translation is retract-old + assert-new. Booking stages the spec;
+re-specifying in the SAME transaction retracts a fact that is still only
+staged, and `WriteBuffer.refuseCollision` refuses: "the fact … is staged with
+the opposite polarity — this transaction has not decided what it believes".
+The library never met this because its writes are append-only (a loan and
+its return are two facts). The first domain that replaces a value hits it on
+the first re-route.
+
+The rule is deliberate — a transaction's delta is a signed set of claims,
+and a fact claimed both ways is a contradiction, not a cancellation — and it
+is the right rule for two independent commands landing in one transaction.
+But "book, then correct the destination before confirming" is one request,
+and the facade cannot express it. Had to: commit between (the tests open a
+second transaction over a `SharedDatabase`, the library's idiom). Open
+question for the engine: should retract-after-assert in one buffer CANCEL
+(the delta is a set, and asserting then retracting leaves it unchanged),
+with only assert-after-retract-of-a-base-fact as the refusal? That would
+make "replace" a single-transaction operation. Not changed here — it is a
+pldb decision, and the refusal is receipted as a test.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named

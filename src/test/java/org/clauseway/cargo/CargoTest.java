@@ -39,13 +39,13 @@ public class CargoTest {
 	}
 
 	private static Shipping bookedStockholmMelbourne() {
-		return world().bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100));
+		return world().bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
 	}
 
 	/** Two legs on voyage 0123 through the midpoint, well inside the deadline. */
 	private static Shipping withItinerary(String origin, String midpoint, String destination) {
 		return world()
-				.bookCargo("CARGO1", origin, destination, hour(100))
+				.bookCargo("CARGO1", origin, destination, hour(100)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
 						new Leg(VOYAGE, origin, midpoint, hour(1), hour(2)),
 						new Leg(VOYAGE, midpoint, destination, hour(3), hour(4))));
@@ -153,7 +153,7 @@ public class CargoTest {
 
 	@Test
 	public void aCargoWithNoItineraryIsNotMisdirected() {
-		Shipping s = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100));
+		Shipping s = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).get();
 		assertThat(s.deliveryOf("TRKID").isMisdirected()).isFalse();
 	}
 
@@ -205,7 +205,7 @@ public class CargoTest {
 
 	@Test
 	public void anUnroutedCargoHasNoEtaAndNothingExpected() {
-		Delivery d = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).deliveryOf("TRKID");
+		Delivery d = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).get().deliveryOf("TRKID");
 		assertThat(d.getEta()).isEmpty();
 		assertThat(d.getNextExpectedActivity()).isEmpty();
 	}

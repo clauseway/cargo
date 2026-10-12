@@ -19,7 +19,7 @@ public class HandlingHistoryTest {
 				.withLocation("SESTO", "Stockholm")
 				.withLocation("DEHAM", "Hamburg")
 				.withVoyage("X25")
-				.bookCargo("ABC", "SESTO", "DEHAM", hour(100))
+				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
 				.withHandlingEvent("ABC", HandlingType.UNLOAD, "DEHAM", "X25", hour(10), hour(150))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "X25", hour(5), hour(100))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "X25", hour(5), hour(200));
@@ -37,7 +37,7 @@ public class HandlingHistoryTest {
 
 	@Test
 	public void anUnhandledCargoHasNoLastEvent() {
-		Shipping booked = Shipping.empty().bookCargo("ABC", "SESTO", "DEHAM", hour(100));
+		Shipping booked = Shipping.empty().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
 		assertThat(booked.lastEventOf("ABC")).isEmpty();
 	}
 }
