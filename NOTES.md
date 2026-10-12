@@ -82,6 +82,34 @@ the remaining P1 test.
   write, and the three cases are visibly exhaustive and exclusive, which the
   chain only was by reading order.
 
+## P1 closed: "the leg after this one" is index+1
+
+`nextExpectedActivity` after an UNLOAD at port L: the leg unloading at L has
+index i; the leg at i+1 says LOAD there, and `¬leg(c, i+1, …)` says CLAIM at
+L. Same three lines as `lastLeg`. The ordered-sequence prediction is closed:
+an index column and `addo` cover first, last and successor, and nothing was
+clumsy enough to want an engine feature. What dddsample does with an
+`Iterator` and `hasNext()` is one negation.
+
+## P3 graded: absence is `Optional` at the facade, and the engine has no `null`
+
+Every "sometimes there isn't one" in `Delivery` — last known location before
+any handling, current voyage while not aboard, ETA and next activity while
+not on track — is a rule with no answer, and the facade reads it as
+`Optional.empty()`. dddsample carries `Location.UNKNOWN`, `Voyage.NONE`,
+`ETA_UNKNOWN = null`, `NO_ACTIVITY = null` and a `default: UNKNOWN` transport
+status that no switch arm reaches; none of them exist here, because a rule
+that does not hold is not a value. The cost: `Delivery` is a Java value built
+from eight solves rather than one relation, because one row with optional
+columns is exactly the null-object problem again. Eight solves over a pinned
+read set is not expensive; a single `delivery(c, …)` relation would need a
+story for absent columns and I did not want one. Also gone: `calculatedAt` —
+nothing is calculated and stored, so nothing is stale.
+
+- A lookup (handling kind → transport status) is a relation over its own
+  five facts in a static `AnswerStore`, read with the same literal as any
+  other relation. The `switch` became a table; worth keeping as an idiom.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named

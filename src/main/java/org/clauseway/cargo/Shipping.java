@@ -157,15 +157,54 @@ public final class Shipping implements AutoCloseable {
 
 	public RoutingStatus routingStatusOf(String trackingId) {
 		Unifiable<RoutingStatus> status = lvar();
-		return Query.of(rules.routingStatus(lval(trackingId), status)).solve(status)
-				.findFirst().map(Reified::get)
+		return first(rules.routingStatus(lval(trackingId), status), status)
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
-		return Query.of(rules.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
-				lval(event.getVoyageNumber()))).solve(lval(trackingId)).findAny().isPresent();
+		return holds(rules.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
+				lval(event.getVoyageNumber())));
+	}
+
+	/** The cargo's delivery, every field derived now from the facts. */
+	public Delivery deliveryOf(String trackingId) {
+		Unifiable<String> id = lval(trackingId);
+		Unifiable<TransportStatus> transport = lvar();
+		Unifiable<String> location = lvar();
+		Unifiable<String> voyageNumber = lvar();
+		Unifiable<Instant> eta = lvar();
+		return new Delivery(
+				routingStatusOf(trackingId),
+				first(rules.transportStatus(id, transport), transport)
+						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
+				first(rules.lastKnownLocation(id, location), location),
+				first(rules.currentVoyage(id, voyageNumber), voyageNumber),
+				holds(rules.misdirected(id)),
+				first(rules.eta(id, eta), eta),
+				nextExpectedActivityOf(trackingId),
+				holds(rules.unloadedAtDestination(id)));
+	}
+
+	private Optional<HandlingActivity> nextExpectedActivityOf(String trackingId) {
+		Unifiable<HandlingType> type = lvar();
+		Unifiable<String> location = lvar();
+		Unifiable<String> voyageNumber = lvar();
+		return Query.of(rules.nextExpectedActivity(lval(trackingId), type, location, voyageNumber))
+				.select(type, location, voyageNumber).rows()
+				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
+						row.get(voyageNumber).get()))
+				.findFirst();
+	}
+
+	/** The first answer for one variable of a goal, if any. */
+	private static <T> Optional<T> first(Literal goal, Unifiable<T> out) {
+		return Query.of(goal).solve(out).findFirst().map(Reified::get);
+	}
+
+	/** Whether a ground goal has an answer at all. */
+	private static boolean holds(Literal goal) {
+		return Query.of(goal).solve(lval(true)).findAny().isPresent();
 	}
 
 	/** The variables of one leg's columns and the row-to-value reading over them. */
