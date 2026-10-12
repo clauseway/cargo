@@ -1,7 +1,7 @@
 package org.clauseway.cargo;
 
-// ABOUTME: One registered handling of a cargo: what was done, where, on which
-// ABOUTME: voyage if any, when it happened and when it was reported.
+// ABOUTME: One handling of a cargo: what was done, where, on which voyage if
+// ABOUTME: any, and when — its identity; registrations of it are separate facts.
 
 import java.time.Instant;
 import lombok.Value;
@@ -12,5 +12,4 @@ public class HandlingEvent {
 	String location;
 	String voyageNumber;
 	Instant completionTime;
-	Instant registrationTime;
 }

@@ -8,6 +8,7 @@ import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
 import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.cargo.Schema.location;
+import static org.clauseway.cargo.Schema.registration;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.cargo.Schema.voyage;
 import static org.clauseway.logic.unification.terms.LVal.lval;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.clauseway.functional.Nothing;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
@@ -34,9 +36,11 @@ public final class Shipping implements AutoCloseable {
 	public static final String NO_VOYAGE = "";
 
 	private final Transaction db;
+	private final Rules rules;
 
 	private Shipping(Transaction db) {
 		this.db = db;
+		this.rules = new Rules(db);
 	}
 
 	/** A private one-history world — the pure-value mode for tests and demos. */
@@ -98,10 +102,13 @@ public final class Shipping implements AutoCloseable {
 		return withHandlingEvent(trackingId, type, location, NO_VOYAGE, completionTime, registrationTime);
 	}
 
+	/** The event is one fact, the report of it another: a second report adds only a registration. */
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			String voyageNumber, Instant completionTime, Instant registrationTime) {
 		return with(handlingEvent(db, lval(trackingId), lval(type), lval(location), lval(voyageNumber),
-				lval(completionTime), lval(registrationTime)));
+						lval(completionTime)),
+				registration(db, lval(trackingId), lval(type), lval(location), lval(voyageNumber),
+						lval(completionTime), lval(registrationTime)));
 	}
 
 	private Shipping with(Literal... rows) {
@@ -151,12 +158,26 @@ public final class Shipping implements AutoCloseable {
 		Unifiable<String> location = lvar();
 		Unifiable<String> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
-		Unifiable<Instant> registered = lvar();
-		return Query.of(handlingEvent(db, lval(trackingId), type, location, voyageNumber, completed, registered))
-				.select(type, location, voyageNumber, completed, registered).rows()
-				.map(row -> new HandlingEvent(row.get(type).get(), row.get(location).get(),
-						row.get(voyageNumber).get(), row.get(completed).get(), row.get(registered).get()))
+		return events(Query.of(handlingEvent(db, lval(trackingId), type, location, voyageNumber, completed))
+				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
 				.sorted(Comparator.comparing(HandlingEvent::getCompletionTime))
 				.collect(Collectors.toList());
+	}
+
+	/** The most recently completed handling of the cargo, if any. */
+	public Optional<HandlingEvent> lastEventOf(String trackingId) {
+		Unifiable<HandlingType> type = lvar();
+		Unifiable<String> location = lvar();
+		Unifiable<String> voyageNumber = lvar();
+		Unifiable<Instant> completed = lvar();
+		return events(Query.of(rules.lastEvent(lval(trackingId), type, location, voyageNumber, completed))
+				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
+				.findFirst();
+	}
+
+	private static Stream<HandlingEvent> events(Stream<Row> rows, Unifiable<HandlingType> type,
+			Unifiable<String> location, Unifiable<String> voyageNumber, Unifiable<Instant> completed) {
+		return rows.map(row -> new HandlingEvent(row.get(type).get(), row.get(location).get(),
+				row.get(voyageNumber).get(), row.get(completed).get()));
 	}
 }
