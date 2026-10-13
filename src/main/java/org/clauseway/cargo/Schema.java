@@ -3,6 +3,9 @@ package org.clauseway.cargo;
 // ABOUTME: The shipping schema as function-shaped relations — dddsample's three
 // ABOUTME: aggregates flattened to facts, names stated once, lists as index columns.
 
+import static org.clauseway.logic.unification.terms.LVar.lvar;
+
+import java.sql.Timestamp;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -10,9 +13,25 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.sql.Codec;
+import org.clauseway.pldb.sql.SerializableSource;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Schema {
+
+	private static final Codec<Instant> INSTANT = Codec.of(Instant.class, Timestamp.class, Timestamp::from, Timestamp::toInstant);
+	private static final Codec<HandlingType> HANDLING_TYPE = Codec.of(HandlingType.class, String.class, Enum::name, HandlingType::valueOf);
+	private static final Codec<LOption<String>> OPTIONAL_VOYAGE = Codec.optional(String.class);
+
+	/** The schema on a SQL source: instants as timestamps, the handling kind by name, the absent voyage as NULL. */
+	public static SerializableSource onSql(SerializableSource source) {
+		return source
+				.withCodec(carrierMovement(null, lvar(), lvar(), lvar(), INSTANT.arg(), INSTANT.arg()))
+				.withCodec(routeSpecification(null, lvar(), lvar(), lvar(), INSTANT.arg()))
+				.withCodec(leg(null, lvar(), lvar(), lvar(), lvar(), lvar(), INSTANT.arg(), INSTANT.arg()))
+				.withCodec(handlingEvent(null, lvar(), HANDLING_TYPE.arg(), lvar(), OPTIONAL_VOYAGE.arg(),
+						INSTANT.arg(), INSTANT.arg()));
+	}
 
 	/** A port, by UN/LOCODE. */
 	public static Literal location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
