@@ -37,7 +37,9 @@ as informative as one that does.
   itinerary) is retract-old + assert-new: the literal reading of "discard the
   old value and attach a new one".
 - The three voyage-less handling types carry dddsample's own null object,
-  `Voyage.NONE` with the empty voyage number, rather than a nullable column.
+  `Voyage.NONE` with the empty voyage number, rather than a nullable column
+  (which the engine has — `.nullable()` and `lval(null)`; see the
+  correction under P3). The empty number is what dddsample itself stores.
   P3 stays open for the derived side.
 - dddsample dedups handling events by value (`distinctEventsByCompletionTime`
   through a `HashSet`). Facts are values here, so that dedup is free (entry 1).
@@ -109,6 +111,19 @@ nothing is calculated and stored, so nothing is stale.
 - A lookup (handling kind → transport status) is a relation over its own
   five facts in a static `AnswerStore`, read with the same literal as any
   other relation. The `switch` became a table; worth keeping as an idiom.
+
+- **Correction (Tom):** "the engine has no `null`" is false. A column
+  declared `.nullable()` carries `lval(null)` as a value that equals itself
+  and nothing else — a free probe delivers it, a bound-null probe selects
+  it, an indexed null cell keys its bucket, and SQL NULL rides through a
+  declared-nullable column (`NullCellTest`, `NullableColumnTest`). So a
+  single `delivery(c, …)` relation with nullable columns was available;
+  what it would cost is that each disjunct must SAY `eta.unifies(null)` in
+  its absent case, where a rule with no answer says it by not holding.
+  The eight-solve `Delivery` stands as the choice I prefer, not the one
+  the engine forced. The rest of the entry holds: dddsample's null
+  objects (`Location.UNKNOWN`, `Voyage.NONE`) and the unreachable
+  `default: UNKNOWN` are still gone, because absence is a rule not holding.
 
 ## 2. The rules read as a soup; part of that is essential, part is ceremony
 
