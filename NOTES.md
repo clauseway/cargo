@@ -285,6 +285,39 @@ not holding. The eight solves in `deliveryOf` are that reification done
 at the edge, in Java, where it belongs — the facade assembles the row for
 the caller and the rules stay partial for each other.
 
+## 7. The absent voyage is a constructor: `LOption` lands, `NO_VOYAGE` goes
+
+The engine grew its optional out of this ledger (entries P3, 6; the
+`absence-is-a-constructor` note in logic), and the port is the receipt.
+`handlingEvent`'s voyage column is now `Unifiable<LOption<String>>`;
+`Voyage.NONE`-as-empty-string is gone, and so is the comment that
+explained it. Same 51 tests, green first run against the logic and pldb
+snapshots. What moved, and what it reads like:
+
+- `registrationDenial`'s three voyage rules are one `matche` on the
+  column's shape: `none()` → "voyage required" if the kind requires one;
+  `some(v)` → "voyage prohibited" if the kind forbids one, or "unknown
+  voyage" if `v` is not a voyage. The "unknown voyage" rule no longer
+  says "and it isn't the empty string", because nothing is.
+- `plannedHandling` binds the shape per step — `none()` for the receipt
+  and the claim, `some(legVoyage)` for a load or unload — and
+  `currentVoyage` destructures in the head position:
+  `lastEvent(c, LOAD, _, some(voyageNumber), _)`, with `voyageNumber`
+  a plain `Unifiable<String>` in its own head, because a cargo that HAS a
+  current voyage has a real one. The rule stays partial; its type says so.
+- `expected`, `misdirected`, `nextExpectedActivity`, `lastEvent` changed
+  only the column's type: they pass the shape through.
+- The facade reads `row.get(voyage).get().toOptional()` and writes
+  `LOption.of(optional)`; `HandlingEvent` and `HandlingActivity` carry
+  `Optional<String>`. The tests spell `Optional.of("CM001")` and
+  `Optional.empty()` where they spelled a string and a sentinel.
+
+Net: 13 files, +97/−85, and the optional appears exactly where
+dddsample has a null object and nowhere else. The one thing the port does
+NOT do is make `Delivery` a row again — entry 6's reasoning stands, now
+with the proviso that an `LOption` head would be legal and visible; the
+facade's eight solves remain the choice.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named

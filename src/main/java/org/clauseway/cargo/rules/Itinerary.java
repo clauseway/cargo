@@ -3,9 +3,10 @@ package org.clauseway.cargo.rules;
 // ABOUTME: The itinerary read as rules: its first and last legs by index, and
 // ABOUTME: the sequence of handlings it plans — which is what it accounts for.
 
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
 import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.structures.LOption.none;
+import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
@@ -13,6 +14,7 @@ import static org.clauseway.pldb.relations.Projected.projected;
 import java.time.Instant;
 import org.clauseway.cargo.HandlingType;
 import org.clauseway.logic.finitedomain.Ints;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
@@ -82,9 +84,10 @@ public final class Itinerary {
 	 * anywhere.
 	 */
 	public Literal plannedHandling(Unifiable<String> trackingId, Unifiable<Integer> step,
-			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<String> voyageNumber) {
+			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
 		Unifiable<Integer> index = lvar();
 		Unifiable<Integer> twice = lvar();
+		Unifiable<String> legVoyage = lvar();
 		return Literal.relation(Itinerary.class, "plannedHandling")
 				.arg("trackingId", trackingId)
 				.arg("step", step)
@@ -94,13 +97,15 @@ public final class Itinerary {
 				.solving(type.unifies(HandlingType.RECEIVE)
 						.and(firstLeg(trackingId, lvar(), location, lvar(), lvar(), lvar()))
 						.and(step.unifies(0))
-						.and(voyageNumber.unifies(NO_VOYAGE))
+						.and(voyageNumber.unifies(none()))
 						.or(type.unifies(HandlingType.LOAD)
-								.and(leg(db, trackingId, index, voyageNumber, location, lvar(), lvar(), lvar()))
+								.and(leg(db, trackingId, index, legVoyage, location, lvar(), lvar(), lvar()))
+								.and(voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(1), step)))
 						.or(type.unifies(HandlingType.UNLOAD)
-								.and(leg(db, trackingId, index, voyageNumber, lvar(), location, lvar(), lvar()))
+								.and(leg(db, trackingId, index, legVoyage, lvar(), location, lvar(), lvar()))
+								.and(voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(2), step)))
 						.or(type.unifies(HandlingType.CLAIM)
@@ -108,7 +113,7 @@ public final class Itinerary {
 								.and(lastIndex(trackingId, index))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(3), step))
-								.and(voyageNumber.unifies(NO_VOYAGE))));
+								.and(voyageNumber.unifies(none()))));
 	}
 
 	/**
@@ -116,7 +121,7 @@ public final class Itinerary {
 	 * anywhere; and everything, for a cargo with no itinerary.
 	 */
 	public Literal expected(Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<String> voyageNumber) {
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
 		return Literal.relation(Itinerary.class, "expected")
 				.arg("trackingId", trackingId)
 				.arg("type", type)

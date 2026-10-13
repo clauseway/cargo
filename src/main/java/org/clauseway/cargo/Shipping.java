@@ -3,7 +3,6 @@ package org.clauseway.cargo;
 // ABOUTME: The shipping domain facade — an immutable fact base over one
 // ABOUTME: transaction: booking, routing and handling land as facts, reads are solves.
 
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
 import static org.clauseway.cargo.Schema.carrierMovement;
 import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
@@ -11,6 +10,8 @@ import static org.clauseway.cargo.Schema.leg;
 import static org.clauseway.cargo.Schema.location;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.cargo.Schema.voyage;
+import static org.clauseway.logic.unification.structures.LOption.none;
+import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
@@ -30,6 +31,7 @@ import org.clauseway.cargo.rules.Routing;
 import org.clauseway.functional.Nothing;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.inmemory.SharedDatabase;
@@ -122,17 +124,18 @@ public final class Shipping implements AutoCloseable {
 
 	/** Registering a handling: HandlingEventFactory's checks, then the fact. */
 	public Try<Shipping> registerHandling(String trackingId, HandlingType type, String location,
-			String voyageNumber, Instant completionTime, Instant registrationTime) {
+			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
 		return command(registrationDenials(trackingId, type, location, voyageNumber),
-				() -> withHandlingEvent(trackingId, type, location, voyageNumber, completionTime, registrationTime));
+				() -> with(handlingEvent(db, lval(trackingId), lval(type), lval(location), LOption.of(voyageNumber),
+						lval(completionTime), lval(registrationTime))));
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */
 	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
-			String voyageNumber) {
+			Optional<String> voyageNumber) {
 		Unifiable<String> reason = lvar();
 		return values(Query.of(history.registrationDenial(lval(trackingId), lval(type), lval(location),
-				lval(voyageNumber), reason)).solve(reason));
+				LOption.of(voyageNumber), reason)).solve(reason));
 	}
 
 	/** Every rule the specification would violate, by name; empty means allowed. */
@@ -160,12 +163,13 @@ public final class Shipping implements AutoCloseable {
 
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			Instant completionTime, Instant registrationTime) {
-		return withHandlingEvent(trackingId, type, location, NO_VOYAGE, completionTime, registrationTime);
+		return with(handlingEvent(db, lval(trackingId), lval(type), lval(location), none(),
+				lval(completionTime), lval(registrationTime)));
 	}
 
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			String voyageNumber, Instant completionTime, Instant registrationTime) {
-		return with(handlingEvent(db, lval(trackingId), lval(type), lval(location), lval(voyageNumber),
+		return with(handlingEvent(db, lval(trackingId), lval(type), lval(location), some(lval(voyageNumber)),
 				lval(completionTime), lval(registrationTime)));
 	}
 
@@ -227,19 +231,19 @@ public final class Shipping implements AutoCloseable {
 		Unifiable<Integer> step = lvar();
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
+		Unifiable<LOption<String>> voyageNumber = lvar();
 		return Query.of(itinerary.plannedHandling(lval(trackingId), step, type, location, voyageNumber))
 				.select(step, type, location, voyageNumber).rows()
 				.sorted(Comparator.comparing((Row row) -> row.get(step).get()))
 				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
-						row.get(voyageNumber).get()))
+						row.get(voyageNumber).get().toOptional()))
 				.collect(Collectors.toList());
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
 		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
-				lval(event.getVoyageNumber())));
+				LOption.of(event.getVoyageNumber())));
 	}
 
 	/** The cargo's delivery, every field derived now from the facts. */
@@ -264,11 +268,11 @@ public final class Shipping implements AutoCloseable {
 	private Optional<HandlingActivity> nextExpectedActivityOf(String trackingId) {
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
+		Unifiable<LOption<String>> voyageNumber = lvar();
 		return Query.of(progress.nextExpectedActivity(lval(trackingId), type, location, voyageNumber))
 				.select(type, location, voyageNumber).rows()
 				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
-						row.get(voyageNumber).get()))
+						row.get(voyageNumber).get().toOptional()))
 				.findFirst();
 	}
 
@@ -304,7 +308,7 @@ public final class Shipping implements AutoCloseable {
 	public List<HandlingEvent> handlingHistoryOf(String trackingId) {
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
+		Unifiable<LOption<String>> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
 		return events(Query.of(handlingEvent(db, lval(trackingId), type, location, voyageNumber, completed, lvar()))
 				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
@@ -316,7 +320,7 @@ public final class Shipping implements AutoCloseable {
 	public Optional<HandlingEvent> lastEventOf(String trackingId) {
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
+		Unifiable<LOption<String>> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
 		return events(Query.of(history.lastEvent(lval(trackingId), type, location, voyageNumber, completed))
 				.select(type, location, voyageNumber, completed).rows(), type, location, voyageNumber, completed)
@@ -324,8 +328,8 @@ public final class Shipping implements AutoCloseable {
 	}
 
 	private static Stream<HandlingEvent> events(Stream<Row> rows, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<String> voyageNumber, Unifiable<Instant> completed) {
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return rows.map(row -> new HandlingEvent(row.get(type).get(), row.get(location).get(),
-				row.get(voyageNumber).get(), row.get(completed).get()));
+				row.get(voyageNumber).get().toOptional(), row.get(completed).get()));
 	}
 }

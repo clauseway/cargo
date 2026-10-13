@@ -6,15 +6,13 @@ package org.clauseway.cargo;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Schema {
-
-	/** The voyage of a port-side handling: none, as the empty number. */
-	public static final String NO_VOYAGE = "";
 
 	/** A port, by UN/LOCODE. */
 	public static Literal location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
@@ -80,12 +78,12 @@ public final class Schema {
 
 	/**
 	 * A handling event as reported — what happened to the cargo, where, when
-	 * it happened and when the report arrived; the voyage is the empty number
-	 * for the port-side kinds. A handling reported twice is two rows; every
-	 * rule projects the registration time away, so it is one event.
+	 * it happened and when the report arrived; the port-side kinds have no
+	 * voyage. A handling reported twice is two rows; every rule projects the
+	 * registration time away, so it is one event.
 	 */
 	public static Literal handlingEvent(AnswerSource db, Unifiable<String> trackingId,
-			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<String> voyageNumber,
+			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber,
 			Unifiable<Instant> completionTime, Unifiable<Instant> registrationTime) {
 		return Literal.relation(Schema.class, "handlingEvent")
 				.arg("trackingId", trackingId).indexed()

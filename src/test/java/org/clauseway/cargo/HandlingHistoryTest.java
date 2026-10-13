@@ -6,12 +6,13 @@ package org.clauseway.cargo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.cargo.Hours.hour;
 
+import java.util.Optional;
 import org.junit.Test;
 
 public class HandlingHistoryTest {
 
-	private static final HandlingEvent EVENT_1 = new HandlingEvent(HandlingType.LOAD, "SESTO", "X25", hour(5));
-	private static final HandlingEvent EVENT_2 = new HandlingEvent(HandlingType.UNLOAD, "DEHAM", "X25", hour(10));
+	private static final HandlingEvent EVENT_1 = new HandlingEvent(HandlingType.LOAD, "SESTO", Optional.of("X25"), hour(5));
+	private static final HandlingEvent EVENT_2 = new HandlingEvent(HandlingType.UNLOAD, "DEHAM", Optional.of("X25"), hour(10));
 
 	/** Event 1 registered twice, at different times; event 2 registered between. */
 	private static Shipping history() {

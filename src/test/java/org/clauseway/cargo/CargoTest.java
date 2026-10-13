@@ -10,9 +10,9 @@ import static org.clauseway.cargo.HandlingType.LOAD;
 import static org.clauseway.cargo.HandlingType.RECEIVE;
 import static org.clauseway.cargo.HandlingType.UNLOAD;
 import static org.clauseway.cargo.Hours.hour;
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
 
 import java.util.Arrays;
+import java.util.Optional;
 import org.junit.Test;
 
 public class CargoTest {
@@ -214,7 +214,7 @@ public class CargoTest {
 	public void aRoutedCargoExpectsReceiptAtTheOriginAndArrivesWithTheLastLeg() {
 		Delivery d = withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).deliveryOf("CARGO1");
 		assertThat(d.getEta()).contains(hour(4));
-		assertThat(d.getNextExpectedActivity()).contains(new HandlingActivity(RECEIVE, SHANGHAI, NO_VOYAGE));
+		assertThat(d.getNextExpectedActivity()).contains(new HandlingActivity(RECEIVE, SHANGHAI, Optional.empty()));
 	}
 
 	@Test
@@ -223,23 +223,23 @@ public class CargoTest {
 
 		s = handled(s, "CARGO1", 10, RECEIVE, SHANGHAI);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(LOAD, SHANGHAI, VOYAGE));
+				.contains(new HandlingActivity(LOAD, SHANGHAI, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 30, LOAD, SHANGHAI, VOYAGE);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(UNLOAD, ROTTERDAM, VOYAGE));
+				.contains(new HandlingActivity(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 50, UNLOAD, ROTTERDAM, VOYAGE);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(LOAD, ROTTERDAM, VOYAGE));
+				.contains(new HandlingActivity(LOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 70, LOAD, ROTTERDAM, VOYAGE);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(UNLOAD, GOTHENBURG, VOYAGE));
+				.contains(new HandlingActivity(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 90, UNLOAD, GOTHENBURG, VOYAGE);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(CLAIM, GOTHENBURG, NO_VOYAGE));
+				.contains(new HandlingActivity(CLAIM, GOTHENBURG, Optional.empty()));
 
 		s = handled(s, "CARGO1", 110, CLAIM, GOTHENBURG);
 		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity()).isEmpty();

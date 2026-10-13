@@ -4,12 +4,13 @@ package org.clauseway.cargo;
 // ABOUTME: any, and when — its identity; registrations of it are separate facts.
 
 import java.time.Instant;
+import java.util.Optional;
 import lombok.Value;
 
 @Value
 public class HandlingEvent {
 	HandlingType type;
 	String location;
-	String voyageNumber;
+	Optional<String> voyageNumber;
 	Instant completionTime;
 }

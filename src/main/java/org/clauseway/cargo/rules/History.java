@@ -3,10 +3,11 @@ package org.clauseway.cargo.rules;
 // ABOUTME: The handling history read as rules: whether the cargo was handled
 // ABOUTME: at all, and which handling was the most recently completed.
 
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
 import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.handlingEvent;
 import static org.clauseway.cargo.Schema.voyage;
+import static org.clauseway.logic.goals.Matche.loption;
+import static org.clauseway.logic.goals.Matche.matche;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import org.clauseway.cargo.HandlingType;
 import org.clauseway.cargo.Schema;
 import org.clauseway.logic.finitedomain.Instants;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
@@ -64,12 +66,12 @@ public final class History {
 	/**
 	 * HandlingEventFactory and the HandlingEvent constructors as one
 	 * complement: every rule a registration would violate, by name. The
-	 * cargo, the port and the voyage must be known; a kind that requires a
-	 * voyage names one, the others name none. Registration is allowed when
-	 * there are no denials.
+	 * cargo and the port must be known; a kind that requires a voyage names
+	 * a known one, the others name none. Registration is allowed when there
+	 * are no denials.
 	 */
 	public Literal registrationDenial(Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<String> voyageNumber, Unifiable<String> reason) {
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<String> reason) {
 		return Literal.relation(History.class, "registrationDenial")
 				.arg("trackingId", trackingId)
 				.arg("type", type)
@@ -80,20 +82,18 @@ public final class History {
 						.and(reason.unifies("unknown cargo"))
 						.or(exclude(Schema.location(db, location, projected()))
 								.and(reason.unifies("unknown location")))
-						.or(exclude(voyageNumber.unifies(NO_VOYAGE))
-								.and(exclude(voyage(db, voyageNumber)))
-								.and(reason.unifies("unknown voyage")))
-						.or(handlingKind(HANDLING_KINDS, type, lval(true))
-								.and(voyageNumber.unifies(NO_VOYAGE))
-								.and(reason.unifies("voyage required")))
-						.or(handlingKind(HANDLING_KINDS, type, lval(false))
-								.and(exclude(voyageNumber.unifies(NO_VOYAGE)))
-								.and(reason.unifies("voyage prohibited"))));
+						.or(matche(voyageNumber,
+								loption(() -> handlingKind(HANDLING_KINDS, type, lval(true))
+										.and(reason.unifies("voyage required"))),
+								loption(named -> handlingKind(HANDLING_KINDS, type, lval(false))
+										.and(reason.unifies("voyage prohibited"))
+										.or(exclude(voyage(db, named))
+												.and(reason.unifies("unknown voyage")))))));
 	}
 
 	/** The most recently completed handling: an event with none later. */
 	public Literal lastEvent(Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<String> voyageNumber, Unifiable<Instant> completed) {
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return Literal.relation(History.class, "lastEvent")
 				.arg("trackingId", trackingId)
 				.arg("type", type)

@@ -10,9 +10,9 @@ import static org.clauseway.cargo.HandlingType.LOAD;
 import static org.clauseway.cargo.HandlingType.RECEIVE;
 import static org.clauseway.cargo.HandlingType.UNLOAD;
 import static org.clauseway.cargo.Hours.hour;
-import static org.clauseway.cargo.Schema.NO_VOYAGE;
 
 import java.util.Arrays;
+import java.util.Optional;
 import org.junit.Test;
 
 public class ItineraryTest {
@@ -45,11 +45,11 @@ public class ItineraryTest {
 	}
 
 	private static HandlingEvent event(HandlingType type, String location) {
-		return new HandlingEvent(type, location, NO_VOYAGE, hour(5));
+		return new HandlingEvent(type, location, Optional.empty(), hour(5));
 	}
 
 	private static HandlingEvent event(HandlingType type, String location, String voyage) {
-		return new HandlingEvent(type, location, voyage, hour(5));
+		return new HandlingEvent(type, location, Optional.of(voyage), hour(5));
 	}
 
 	@Test
@@ -98,12 +98,12 @@ public class ItineraryTest {
 	@Test
 	public void thePlannedHandlings() {
 		assertThat(routed().planOf("CARGO1")).containsExactly(
-				new HandlingActivity(RECEIVE, SHANGHAI, NO_VOYAGE),
-				new HandlingActivity(LOAD, SHANGHAI, VOYAGE),
-				new HandlingActivity(UNLOAD, ROTTERDAM, VOYAGE),
-				new HandlingActivity(LOAD, ROTTERDAM, VOYAGE),
-				new HandlingActivity(UNLOAD, GOTHENBURG, VOYAGE),
-				new HandlingActivity(CLAIM, GOTHENBURG, NO_VOYAGE));
+				new HandlingActivity(RECEIVE, SHANGHAI, Optional.empty()),
+				new HandlingActivity(LOAD, SHANGHAI, Optional.of(VOYAGE)),
+				new HandlingActivity(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)),
+				new HandlingActivity(LOAD, ROTTERDAM, Optional.of(VOYAGE)),
+				new HandlingActivity(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)),
+				new HandlingActivity(CLAIM, GOTHENBURG, Optional.empty()));
 		assertThat(booked().planOf("CARGO1")).isEmpty();
 	}
 

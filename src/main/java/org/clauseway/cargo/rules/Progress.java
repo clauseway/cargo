@@ -6,6 +6,7 @@ package org.clauseway.cargo.rules;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
@@ -14,6 +15,7 @@ import org.clauseway.cargo.HandlingType;
 import org.clauseway.cargo.RoutingStatus;
 import org.clauseway.cargo.TransportStatus;
 import org.clauseway.logic.finitedomain.Ints;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
@@ -75,7 +77,7 @@ public final class Progress {
 		return Literal.relation(Progress.class, "currentVoyage")
 				.arg("trackingId", trackingId)
 				.arg("voyageNumber", voyageNumber)
-				.solving(history.lastEvent(trackingId, lval(HandlingType.LOAD), lvar(), voyageNumber, lvar()));
+				.solving(history.lastEvent(trackingId, lval(HandlingType.LOAD), lvar(), some(voyageNumber), lvar()));
 	}
 
 	/** The last handling is one the itinerary does not account for. */
@@ -85,7 +87,7 @@ public final class Progress {
 				.solving(defer(() -> {
 					Unifiable<HandlingType> type = lvar();
 					Unifiable<String> location = lvar();
-					Unifiable<String> voyageNumber = lvar();
+					Unifiable<LOption<String>> voyageNumber = lvar();
 					return history.lastEvent(trackingId, type, location, voyageNumber, lvar())
 							.and(exclude(itinerary.expected(trackingId, type, location, voyageNumber)));
 				}));
@@ -125,7 +127,7 @@ public final class Progress {
 	 * handling was.
 	 */
 	public Literal nextExpectedActivity(Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<String> voyageNumber) {
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
 		return Literal.relation(Progress.class, "nextExpectedActivity")
 				.arg("trackingId", trackingId)
 				.arg("type", type)
@@ -137,7 +139,7 @@ public final class Progress {
 								.or(defer(() -> {
 									Unifiable<HandlingType> lastType = lvar();
 									Unifiable<String> lastLocation = lvar();
-									Unifiable<String> lastVoyage = lvar();
+									Unifiable<LOption<String>> lastVoyage = lvar();
 									Unifiable<Integer> step = lvar();
 									Unifiable<Integer> next = lvar();
 									return history.lastEvent(trackingId, lastType, lastLocation, lastVoyage, lvar())
