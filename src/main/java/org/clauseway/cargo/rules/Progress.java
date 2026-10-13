@@ -8,6 +8,7 @@ import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
 import org.clauseway.cargo.HandlingType;
@@ -117,6 +118,51 @@ public final class Progress {
 					return history.lastEvent(trackingId, lval(HandlingType.UNLOAD), location, lvar(), lvar())
 							.and(routeSpecification(db, trackingId, lvar(), location, lvar()));
 				}));
+	}
+
+	/**
+	 * The delivery as one row per cargo — dddsample's Delivery snapshot. The
+	 * partial fields (a last location, a voyage, an ETA, a next activity) are
+	 * null where their rule has no answer, and the two booleans are true
+	 * where theirs holds; so the row exists for every cargo, and it filters
+	 * nothing — ask the rules beneath it for that.
+	 */
+	public Literal delivery(Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
+			Unifiable<TransportStatus> transport, Unifiable<String> lastKnownLocation,
+			Unifiable<String> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<Instant> eta,
+			Unifiable<HandlingType> nextType, Unifiable<String> nextLocation, Unifiable<String> nextVoyage,
+			Unifiable<Boolean> unloadedAtDestination) {
+		return Literal.relation(Progress.class, "delivery")
+				.arg("trackingId", trackingId)
+				.arg("routingStatus", routingStatus)
+				.arg("transport", transport)
+				.arg("lastKnownLocation", lastKnownLocation).nullable()
+				.arg("currentVoyage", currentVoyage).nullable()
+				.arg("misdirected", misdirected)
+				.arg("eta", eta).nullable()
+				.arg("nextType", nextType).nullable()
+				.arg("nextLocation", nextLocation).nullable()
+				.arg("nextVoyage", nextVoyage).nullable()
+				.arg("unloadedAtDestination", unloadedAtDestination)
+				.solving(routing.routingStatus(trackingId, routingStatus)
+						.and(transportStatus(trackingId, transport))
+						.and(lastKnownLocation(trackingId, lastKnownLocation)
+								.or(exclude(lastKnownLocation(trackingId, projected()))
+										.and(lastKnownLocation.unifies(lval((String) null)))))
+						.and(currentVoyage(trackingId, currentVoyage)
+								.or(exclude(currentVoyage(trackingId, projected()))
+										.and(currentVoyage.unifies(lval((String) null)))))
+						.and(misdirected(trackingId).and(misdirected.unifies(true))
+								.or(exclude(misdirected(trackingId)).and(misdirected.unifies(false))))
+						.and(eta(trackingId, eta)
+								.or(exclude(eta(trackingId, projected())).and(eta.unifies(lval((Instant) null)))))
+						.and(nextExpectedActivity(trackingId, nextType, nextLocation, nextVoyage)
+								.or(exclude(nextExpectedActivity(trackingId, projected(), projected(), projected()))
+										.and(nextType.unifies(lval((HandlingType) null)))
+										.and(nextLocation.unifies(lval((String) null)))
+										.and(nextVoyage.unifies(lval((String) null)))))
+						.and(unloadedAtDestination(trackingId).and(unloadedAtDestination.unifies(true))
+								.or(exclude(unloadedAtDestination(trackingId)).and(unloadedAtDestination.unifies(false)))));
 	}
 
 	/**

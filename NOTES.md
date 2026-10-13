@@ -258,6 +258,33 @@ CLAIM branch both need "the index of the last leg", so that negation is
 now a relation of its own, `lastIndex`, used by both — the second copy
 (in the old `nextExpectedActivity`) is gone with the arms.
 
+## 6. The delivery as one row: a read model is the rules plus their complements
+
+Following the P3 correction, `Delivery` is now one relation,
+`Progress.delivery(c, …ten columns…)`, and `deliveryOf` is one `select`;
+the eight component rules are unchanged beneath it, `CargoTest` unchanged
+over it, green first run. What the row costs, written out:
+
+- A partial field becomes `rule(c, x) ∨ (¬rule(c, _) ∧ x = null)`, on a
+  column declared `.nullable()`; a boolean becomes `rule(c) ∧ b = true ∨
+  ¬rule(c) ∧ b = false`. Six of these; `exclude(rule(c, projected()))`
+  gives the complement, so nothing is restated — the next activity's three
+  columns go null together under one exclusion. This is the reification
+  idiom, and the facade had been doing exactly it in Java (`findFirst` →
+  `Optional`, `findAny` → boolean).
+- `exclude` over a RULE with a free head column, `projected()` in the
+  slot, works as it does over a fact relation. First use here; a non-event.
+- `x.unifies(null)` does not compile — ambiguous between `unifies(T)` and
+  `unifies(Unifiable<T>)`. The spelling is `x.unifies(lval((String) null))`,
+  as the pldb tests do. Small, and it is the only place a null is typed by
+  hand; worth a `nil()` or similar one day, not now.
+
+The row is total by construction, so it is a read model and not a
+question: it holds for every cargo, and `delivery(c, …, eta, …)` with
+`eta` free never filters by having an ETA. The eight rules are the
+questions, the row is the screen; both are there now and the screen is
+twelve lines over the questions.
+
 ## Non-event: an FD comparison under negation
 
 `lastEvent` is `handlingEvent(c, …, t) ∧ ¬later(c, t)` with `later` a named

@@ -242,34 +242,34 @@ public final class Shipping implements AutoCloseable {
 				lval(event.getVoyageNumber())));
 	}
 
-	/** The cargo's delivery, every field derived now from the facts. */
+	/** The cargo's delivery, every field derived now from the facts: one row of the delivery relation. */
 	public Delivery deliveryOf(String trackingId) {
-		Unifiable<String> id = lval(trackingId);
+		Unifiable<RoutingStatus> routingStatus = lvar();
 		Unifiable<TransportStatus> transport = lvar();
-		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
+		Unifiable<String> lastKnownLocation = lvar();
+		Unifiable<String> currentVoyage = lvar();
+		Unifiable<Boolean> misdirected = lvar();
 		Unifiable<Instant> eta = lvar();
-		return new Delivery(
-				routingStatusOf(trackingId),
-				first(progress.transportStatus(id, transport), transport)
-						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
-				first(progress.lastKnownLocation(id, location), location),
-				first(progress.currentVoyage(id, voyageNumber), voyageNumber),
-				holds(progress.misdirected(id)),
-				first(progress.eta(id, eta), eta),
-				nextExpectedActivityOf(trackingId),
-				holds(progress.unloadedAtDestination(id)));
-	}
-
-	private Optional<HandlingActivity> nextExpectedActivityOf(String trackingId) {
-		Unifiable<HandlingType> type = lvar();
-		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
-		return Query.of(progress.nextExpectedActivity(lval(trackingId), type, location, voyageNumber))
-				.select(type, location, voyageNumber).rows()
-				.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
-						row.get(voyageNumber).get()))
-				.findFirst();
+		Unifiable<HandlingType> nextType = lvar();
+		Unifiable<String> nextLocation = lvar();
+		Unifiable<String> nextVoyage = lvar();
+		Unifiable<Boolean> unloadedAtDestination = lvar();
+		return Query.of(progress.delivery(lval(trackingId), routingStatus, transport, lastKnownLocation, currentVoyage,
+						misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination))
+				.select(routingStatus, transport, lastKnownLocation, currentVoyage, misdirected, eta, nextType,
+						nextLocation, nextVoyage, unloadedAtDestination).rows()
+				.map(row -> new Delivery(
+						row.get(routingStatus).get(),
+						row.get(transport).get(),
+						Optional.ofNullable(row.get(lastKnownLocation).get()),
+						Optional.ofNullable(row.get(currentVoyage).get()),
+						row.get(misdirected).get(),
+						Optional.ofNullable(row.get(eta).get()),
+						Optional.ofNullable(row.get(nextType).get())
+								.map(type -> new HandlingActivity(type, row.get(nextLocation).get(), row.get(nextVoyage).get())),
+						row.get(unloadedAtDestination).get()))
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** The first answer for one variable of a goal, if any. */
