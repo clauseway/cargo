@@ -260,6 +260,12 @@ public final class Shipping implements AutoCloseable {
 				LOption.of(event.getVoyageNumber())));
 	}
 
+	/** The inspection after a handling: the notices the cargo's state warrants now. */
+	public List<Notice> inspect(String trackingId) {
+		Unifiable<Notice> notice = lvar();
+		return values(Query.of(progress.notice(lval(trackingId), notice)).solve(notice));
+	}
+
 	/** The cargo's delivery, every field derived now from the facts. */
 	public Delivery deliveryOf(String trackingId) {
 		Unifiable<String> id = lval(trackingId);

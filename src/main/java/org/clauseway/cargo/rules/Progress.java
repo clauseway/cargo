@@ -12,6 +12,7 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
 import org.clauseway.cargo.HandlingType;
+import org.clauseway.cargo.Notice;
 import org.clauseway.cargo.RoutingStatus;
 import org.clauseway.cargo.TransportStatus;
 import org.clauseway.logic.finitedomain.Ints;
@@ -119,6 +120,15 @@ public final class Progress {
 					return history.lastEvent(trackingId, lval(HandlingType.UNLOAD), location, lvar(), lvar())
 							.and(routeSpecification(db, trackingId, lvar(), location, lvar()));
 				}));
+	}
+
+	/** CargoInspectionService: the notices the cargo's state warrants — misdirected, arrived at its destination. */
+	public Literal notice(Unifiable<String> trackingId, Unifiable<Notice> notice) {
+		return Literal.relation(Progress.class, "notice")
+				.arg("trackingId", trackingId)
+				.arg("notice", notice)
+				.solving(misdirected(trackingId).and(notice.unifies(Notice.MISDIRECTED))
+						.or(unloadedAtDestination(trackingId).and(notice.unifies(Notice.ARRIVED))));
 	}
 
 	/**
