@@ -28,7 +28,10 @@ import org.clauseway.cargo.rules.History;
 import org.clauseway.cargo.rules.Itinerary;
 import org.clauseway.cargo.rules.Progress;
 import org.clauseway.cargo.rules.Routing;
+import org.clauseway.cargo.rules.Voyages;
 import org.clauseway.functional.Nothing;
+import org.clauseway.functional.tuples.Tuple5;
+import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LOption;
@@ -51,7 +54,7 @@ public final class Shipping implements AutoCloseable {
 		this.db = db;
 		this.history = new History(db);
 		this.itinerary = new Itinerary(db);
-		this.routing = new Routing(db, itinerary);
+		this.routing = new Routing(db, itinerary, new Voyages(db));
 		this.progress = new Progress(db, history, itinerary, routing);
 	}
 
@@ -205,6 +208,17 @@ public final class Shipping implements AutoCloseable {
 		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
 				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
 				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
+				.collect(Collectors.toList());
+	}
+
+	/** The itineraries the schedule offers the cargo's specification. */
+	public List<List<Leg>> routeCandidatesOf(String trackingId) {
+		Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> legs = lvar();
+		return Query.of(routing.candidate(lval(trackingId), legs)).solve(legs)
+				.map(route -> route.get().elements()
+						.map(leg -> leg.get())
+						.map(leg -> new Leg(leg._1.get(), leg._2.get(), leg._3.get(), leg._4.get(), leg._5.get()))
+						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
 	}
 
