@@ -29,15 +29,15 @@ public class ShippingTest {
 	@Test
 	public void bookingStatesTheRouteSpecification() {
 		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
-		assertThat(booked.routeSpecificationOf("ABC"))
+		assertThat(booked.tracking().routeSpecificationOf("ABC"))
 				.contains(new RouteSpecification("SESTO", "DEHAM", hour(100)));
-		assertThat(booked.routeSpecificationOf("XYZ")).isEmpty();
+		assertThat(booked.tracking().routeSpecificationOf("XYZ")).isEmpty();
 	}
 
 	@Test
 	public void anUnroutedCargoHasNoLegs() {
 		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
-		assertThat(booked.itineraryOf("ABC")).isEmpty();
+		assertThat(booked.tracking().itineraryOf("ABC")).isEmpty();
 	}
 
 	@Test
@@ -45,7 +45,7 @@ public class ShippingTest {
 		Shipping routed = world()
 				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
 				.assignToRoute("ABC", Arrays.asList(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG));
-		assertThat(routed.itineraryOf("ABC")).containsExactly(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG);
+		assertThat(routed.tracking().itineraryOf("ABC")).containsExactly(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG);
 	}
 
 	@Test
@@ -54,9 +54,9 @@ public class ShippingTest {
 				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
 				.withHandlingEvent("ABC", HandlingType.RECEIVE, "SESTO", hour(0), hour(0))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "V100", hour(1), hour(2));
-		assertThat(handled.handlingHistoryOf("ABC")).containsExactly(
+		assertThat(handled.tracking().handlingHistoryOf("ABC")).containsExactly(
 				new HandlingEvent(HandlingType.RECEIVE, "SESTO", Optional.empty(), hour(0)),
 				new HandlingEvent(HandlingType.LOAD, "SESTO", Optional.of("V100"), hour(1)));
-		assertThat(handled.handlingHistoryOf("XYZ")).isEmpty();
+		assertThat(handled.tracking().handlingHistoryOf("XYZ")).isEmpty();
 	}
 }

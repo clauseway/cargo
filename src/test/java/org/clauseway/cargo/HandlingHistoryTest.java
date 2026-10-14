@@ -28,17 +28,17 @@ public class HandlingHistoryTest {
 
 	@Test
 	public void distinctEventsByCompletionTime() {
-		assertThat(history().handlingHistoryOf("ABC")).containsExactly(EVENT_1, EVENT_2);
+		assertThat(history().tracking().handlingHistoryOf("ABC")).containsExactly(EVENT_1, EVENT_2);
 	}
 
 	@Test
 	public void mostRecentlyCompletedEvent() {
-		assertThat(history().lastEventOf("ABC")).contains(EVENT_2);
+		assertThat(history().tracking().lastEventOf("ABC")).contains(EVENT_2);
 	}
 
 	@Test
 	public void anUnhandledCargoHasNoLastEvent() {
 		Shipping booked = Shipping.empty().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
-		assertThat(booked.lastEventOf("ABC")).isEmpty();
+		assertThat(booked.tracking().lastEventOf("ABC")).isEmpty();
 	}
 }

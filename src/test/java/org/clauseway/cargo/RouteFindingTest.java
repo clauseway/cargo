@@ -58,7 +58,7 @@ public class RouteFindingTest {
 	/** A leg stays aboard its voyage past Tokyo; a connection waits for the arrival; the same voyage is never re-boarded. */
 	@Test
 	public void everyChainOfSailingsThatMakesTheDeadline() {
-		assertThat(booked(HONGKONG, CHICAGO, hour(30)).routeCandidatesOf("ABC")).hasSize(3).containsOnlyElementsOf(routes(
+		assertThat(booked(HONGKONG, CHICAGO, hour(30)).tracking().routeCandidatesOf("ABC")).hasSize(3).containsOnlyElementsOf(routes(
 				Arrays.asList(V001_TO_NEWYORK, V002_TO_CHICAGO),
 				Arrays.asList(V003_TO_NEWYORK, V002_TO_CHICAGO),
 				Arrays.asList(V003_TO_NEWYORK, V004_TO_CHICAGO)));
@@ -66,14 +66,14 @@ public class RouteFindingTest {
 
 	@Test
 	public void theDeadlineCutsTheLateArrivals() {
-		assertThat(booked(HONGKONG, CHICAGO, hour(18)).routeCandidatesOf("ABC")).containsExactlyElementsOf(routes(
+		assertThat(booked(HONGKONG, CHICAGO, hour(18)).tracking().routeCandidatesOf("ABC")).containsExactlyElementsOf(routes(
 				Arrays.asList(V003_TO_NEWYORK, V004_TO_CHICAGO)));
-		assertThat(booked(HONGKONG, CHICAGO, hour(15)).routeCandidatesOf("ABC")).isEmpty();
+		assertThat(booked(HONGKONG, CHICAGO, hour(15)).tracking().routeCandidatesOf("ABC")).isEmpty();
 	}
 
 	@Test
 	public void aRouteConnectsAsOftenAsItMust() {
-		assertThat(booked(HONGKONG, DALLAS, hour(30)).routeCandidatesOf("ABC")).hasSize(3).containsOnlyElementsOf(routes(
+		assertThat(booked(HONGKONG, DALLAS, hour(30)).tracking().routeCandidatesOf("ABC")).hasSize(3).containsOnlyElementsOf(routes(
 				Arrays.asList(V001_TO_NEWYORK, V002_TO_CHICAGO, V005_TO_DALLAS),
 				Arrays.asList(V003_TO_NEWYORK, V002_TO_CHICAGO, V005_TO_DALLAS),
 				Arrays.asList(V003_TO_NEWYORK, V004_TO_CHICAGO, V005_TO_DALLAS)));
@@ -81,18 +81,18 @@ public class RouteFindingTest {
 
 	@Test
 	public void noSailingReachesGothenburg() {
-		assertThat(booked(HONGKONG, GOTHENBURG, hour(30)).routeCandidatesOf("ABC")).isEmpty();
+		assertThat(booked(HONGKONG, GOTHENBURG, hour(30)).tracking().routeCandidatesOf("ABC")).isEmpty();
 	}
 
 	@Test
 	public void aDirectSailingIsAOneLegRoute() {
-		assertThat(booked(HONGKONG, NEWYORK, hour(30)).routeCandidatesOf("ABC")).hasSize(2).containsOnlyElementsOf(routes(
+		assertThat(booked(HONGKONG, NEWYORK, hour(30)).tracking().routeCandidatesOf("ABC")).hasSize(2).containsOnlyElementsOf(routes(
 				Arrays.asList(V001_TO_NEWYORK),
 				Arrays.asList(V003_TO_NEWYORK)));
 	}
 
 	@Test
 	public void anUnknownCargoHasNoRoutes() {
-		assertThat(Shipping.empty().routeCandidatesOf("NOPE")).isEmpty();
+		assertThat(Shipping.empty().tracking().routeCandidatesOf("NOPE")).isEmpty();
 	}
 }

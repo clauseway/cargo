@@ -123,10 +123,10 @@ public class PostgresWorldTest {
 		seed();
 
 		Shipping routing = open("route");
-		List<List<Leg>> candidates = routing.routeCandidatesOf("CARGO1");
+		List<List<Leg>> candidates = routing.tracking().routeCandidatesOf("CARGO1");
 		assertThat(candidates).hasSize(1);
 		assertThat(routing.assignToRoute("CARGO1", candidates.get(0)).commit().isSuccess()).isTrue();
-		assertThat(open("check").routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.ROUTED);
+		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.ROUTED);
 
 		assertThat(open("handle")
 				.registerHandling("CARGO1", RECEIVE, SHANGHAI, Optional.empty(), hour(0), hour(0)).get()
@@ -135,18 +135,18 @@ public class PostgresWorldTest {
 				.commit().isSuccess()).isTrue();
 
 		Shipping arrived = open("read");
-		assertThat(arrived.deliveryOf("CARGO1")).isEqualTo(new Delivery(
+		assertThat(arrived.tracking().deliveryOf("CARGO1")).isEqualTo(new Delivery(
 				RoutingStatus.ROUTED, TransportStatus.IN_PORT, Optional.of(GOTHENBURG), Optional.empty(),
 				false, Optional.of(hour(4)),
 				Optional.of(new HandlingActivity(HandlingType.CLAIM, GOTHENBURG, Optional.empty())), true));
-		assertThat(arrived.inspect("CARGO1")).containsExactly(Notice.ARRIVED);
+		assertThat(arrived.tracking().inspect("CARGO1")).containsExactly(Notice.ARRIVED);
 
 		assertThat(open("misdirect")
 				.registerHandling("CARGO1", LOAD, GOTHENBURG, Optional.of(WRONG_VOYAGE), hour(5), hour(5))
 				.get().commit().isSuccess()).isTrue();
 		Shipping astray = open("inspect");
-		assertThat(astray.inspect("CARGO1")).containsExactly(Notice.MISDIRECTED);
-		assertThat(astray.deliveryOf("CARGO1").getCurrentVoyage()).contains(WRONG_VOYAGE);
+		assertThat(astray.tracking().inspect("CARGO1")).containsExactly(Notice.MISDIRECTED);
+		assertThat(astray.tracking().deliveryOf("CARGO1").getCurrentVoyage()).contains(WRONG_VOYAGE);
 	}
 
 	/**
@@ -162,7 +162,7 @@ public class PostgresWorldTest {
 
 		assertThat(toRotterdam.commit().isSuccess()).isTrue();
 		assertThat(toHelsinki.commit().getCause()).isInstanceOf(Transaction.Conflict.class);
-		assertThat(open("check").routeSpecificationOf("CARGO1"))
+		assertThat(open("check").tracking().routeSpecificationOf("CARGO1"))
 				.contains(new RouteSpecification(SHANGHAI, ROTTERDAM, hour(5)));
 	}
 
@@ -178,13 +178,13 @@ public class PostgresWorldTest {
 	public void aRouteChosenForASpecificationTheWorldHasLeftIsSerializable() throws SQLException {
 		seed();
 		Shipping routing = open("route");
-		List<Leg> chosen = routing.routeCandidatesOf("CARGO1").get(0);
+		List<Leg> chosen = routing.tracking().routeCandidatesOf("CARGO1").get(0);
 		Shipping routed = routing.assignToRoute("CARGO1", chosen);
 
 		assertThat(open("reroute").specifyNewRoute("CARGO1", SHANGHAI, ROTTERDAM, hour(5)).get()
 				.commit().isSuccess()).isTrue();
 
 		assertThat(routed.commit().isSuccess()).isTrue();
-		assertThat(open("check").routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.MISROUTED);
+		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.MISROUTED);
 	}
 }

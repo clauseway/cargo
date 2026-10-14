@@ -28,46 +28,46 @@ public class RegistrationTest {
 	@Test
 	public void createHandlingEventWithCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", LOAD, STOCKHOLM, Optional.of("CM001"), hour(1), hour(2)).get();
-		assertThat(s.handlingHistoryOf("ABC"))
+		assertThat(s.tracking().handlingHistoryOf("ABC"))
 				.containsExactly(new HandlingEvent(LOAD, STOCKHOLM, Optional.of("CM001"), hour(1)));
 	}
 
 	@Test
 	public void createHandlingEventWithoutCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", CLAIM, STOCKHOLM, Optional.empty(), hour(1), hour(2)).get();
-		assertThat(s.handlingHistoryOf("ABC"))
+		assertThat(s.tracking().handlingHistoryOf("ABC"))
 				.containsExactly(new HandlingEvent(CLAIM, STOCKHOLM, Optional.empty(), hour(1)));
 	}
 
 	@Test
 	public void createHandlingEventUnknownLocation() {
-		assertThat(world().registrationDenials("ABC", LOAD, "NOEXIST", Optional.of("CM001"))).containsExactly("unknown location");
+		assertThat(world().tracking().registrationDenials("ABC", LOAD, "NOEXIST", Optional.of("CM001"))).containsExactly("unknown location");
 		assertThat(world().registerHandling("ABC", LOAD, "NOEXIST", Optional.of("CM001"), hour(1), hour(2)).isFailure()).isTrue();
 	}
 
 	@Test
 	public void createHandlingEventUnknownCarrierMovement() {
-		assertThat(world().registrationDenials("ABC", LOAD, STOCKHOLM, Optional.of("NOEXIST"))).containsExactly("unknown voyage");
+		assertThat(world().tracking().registrationDenials("ABC", LOAD, STOCKHOLM, Optional.of("NOEXIST"))).containsExactly("unknown voyage");
 	}
 
 	@Test
 	public void createHandlingEventUnknownTrackingId() {
-		assertThat(world().registrationDenials("NOEXIST", LOAD, STOCKHOLM, Optional.of("CM001"))).containsExactly("unknown cargo");
+		assertThat(world().tracking().registrationDenials("NOEXIST", LOAD, STOCKHOLM, Optional.of("CM001"))).containsExactly("unknown cargo");
 	}
 
 	@Test
 	public void aLoadNeedsAVoyage() {
-		assertThat(world().registrationDenials("ABC", LOAD, STOCKHOLM, Optional.empty())).containsExactly("voyage required");
+		assertThat(world().tracking().registrationDenials("ABC", LOAD, STOCKHOLM, Optional.empty())).containsExactly("voyage required");
 	}
 
 	@Test
 	public void aReceiptMustNotNameAVoyage() {
-		assertThat(world().registrationDenials("ABC", RECEIVE, STOCKHOLM, Optional.of("CM001"))).containsExactly("voyage prohibited");
+		assertThat(world().tracking().registrationDenials("ABC", RECEIVE, STOCKHOLM, Optional.of("CM001"))).containsExactly("voyage prohibited");
 	}
 
 	@Test
 	public void everyViolatedRuleIsNamed() {
-		assertThat(world().registrationDenials("NOEXIST", LOAD, "NOEXIST", Optional.empty()))
+		assertThat(world().tracking().registrationDenials("NOEXIST", LOAD, "NOEXIST", Optional.empty()))
 				.containsExactlyInAnyOrder("unknown cargo", "unknown location", "voyage required");
 	}
 }

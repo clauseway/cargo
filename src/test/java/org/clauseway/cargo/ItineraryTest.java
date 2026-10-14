@@ -55,64 +55,64 @@ public class ItineraryTest {
 	@Test
 	public void cargoOnTrack() {
 		Shipping s = routed();
-		assertThat(s.isExpected("CARGO1", event(RECEIVE, SHANGHAI))).isTrue();
-		assertThat(s.isExpected("CARGO1", event(LOAD, SHANGHAI, VOYAGE))).isTrue();
-		assertThat(s.isExpected("CARGO1", event(UNLOAD, ROTTERDAM, VOYAGE))).isTrue();
-		assertThat(s.isExpected("CARGO1", event(LOAD, ROTTERDAM, VOYAGE))).isTrue();
-		assertThat(s.isExpected("CARGO1", event(UNLOAD, GOTHENBURG, VOYAGE))).isTrue();
-		assertThat(s.isExpected("CARGO1", event(CLAIM, GOTHENBURG))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(RECEIVE, SHANGHAI))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(LOAD, SHANGHAI, VOYAGE))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(UNLOAD, ROTTERDAM, VOYAGE))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(LOAD, ROTTERDAM, VOYAGE))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(UNLOAD, GOTHENBURG, VOYAGE))).isTrue();
+		assertThat(s.tracking().isExpected("CARGO1", event(CLAIM, GOTHENBURG))).isTrue();
 	}
 
 	@Test
 	public void customsChangesNothing() {
-		assertThat(routed().isExpected("CARGO1", event(CUSTOMS, GOTHENBURG))).isTrue();
+		assertThat(routed().tracking().isExpected("CARGO1", event(CUSTOMS, GOTHENBURG))).isTrue();
 	}
 
 	@Test
 	public void receivedAtTheWrongLocation() {
-		assertThat(routed().isExpected("CARGO1", event(RECEIVE, HANGZHOU))).isFalse();
+		assertThat(routed().tracking().isExpected("CARGO1", event(RECEIVE, HANGZHOU))).isFalse();
 	}
 
 	@Test
 	public void loadedOntoTheWrongShipAtTheRightLocation() {
-		assertThat(routed().isExpected("CARGO1", event(LOAD, ROTTERDAM, WRONG_VOYAGE))).isFalse();
+		assertThat(routed().tracking().isExpected("CARGO1", event(LOAD, ROTTERDAM, WRONG_VOYAGE))).isFalse();
 	}
 
 	@Test
 	public void unloadedFromTheWrongShipAtTheWrongLocation() {
-		assertThat(routed().isExpected("CARGO1", event(UNLOAD, HELSINKI, WRONG_VOYAGE))).isFalse();
+		assertThat(routed().tracking().isExpected("CARGO1", event(UNLOAD, HELSINKI, WRONG_VOYAGE))).isFalse();
 	}
 
 	@Test
 	public void claimedShortOfTheDestination() {
-		assertThat(routed().isExpected("CARGO1", event(CLAIM, ROTTERDAM))).isFalse();
+		assertThat(routed().tracking().isExpected("CARGO1", event(CLAIM, ROTTERDAM))).isFalse();
 	}
 
 	@Test
 	public void anUnroutedCargoExpectsEverything() {
-		assertThat(booked().isExpected("CARGO1", event(RECEIVE, HANGZHOU))).isTrue();
-		assertThat(booked().isExpected("CARGO1", event(UNLOAD, HELSINKI, WRONG_VOYAGE))).isTrue();
+		assertThat(booked().tracking().isExpected("CARGO1", event(RECEIVE, HANGZHOU))).isTrue();
+		assertThat(booked().tracking().isExpected("CARGO1", event(UNLOAD, HELSINKI, WRONG_VOYAGE))).isTrue();
 	}
 
 	/** The sequence of handlings the itinerary plans, in order — the one invariant behind isExpected and the next activity. */
 	@Test
 	public void thePlannedHandlings() {
-		assertThat(routed().planOf("CARGO1")).containsExactly(
+		assertThat(routed().tracking().planOf("CARGO1")).containsExactly(
 				new HandlingActivity(RECEIVE, SHANGHAI, Optional.empty()),
 				new HandlingActivity(LOAD, SHANGHAI, Optional.of(VOYAGE)),
 				new HandlingActivity(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)),
 				new HandlingActivity(LOAD, ROTTERDAM, Optional.of(VOYAGE)),
 				new HandlingActivity(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)),
 				new HandlingActivity(CLAIM, GOTHENBURG, Optional.empty()));
-		assertThat(booked().planOf("CARGO1")).isEmpty();
+		assertThat(booked().tracking().planOf("CARGO1")).isEmpty();
 	}
 
 	@Test
 	public void theFirstAndLastLegs() {
 		Shipping s = routed();
-		assertThat(s.firstLegOf("CARGO1")).contains(new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)));
-		assertThat(s.lastLegOf("CARGO1")).contains(new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)));
-		assertThat(booked().firstLegOf("CARGO1")).isEmpty();
-		assertThat(booked().lastLegOf("CARGO1")).isEmpty();
+		assertThat(s.tracking().firstLegOf("CARGO1")).contains(new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)));
+		assertThat(s.tracking().lastLegOf("CARGO1")).contains(new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)));
+		assertThat(booked().tracking().firstLegOf("CARGO1")).isEmpty();
+		assertThat(booked().tracking().lastLegOf("CARGO1")).isEmpty();
 	}
 }

@@ -40,27 +40,27 @@ public class RouteSpecificationTest {
 
 	@Test
 	public void isSatisfiedBy_Success() {
-		assertThat(routed(HONGKONG, CHICAGO, hour(30)).routingStatusOf("ABC")).isEqualTo(ROUTED);
+		assertThat(routed(HONGKONG, CHICAGO, hour(30)).tracking().routingStatusOf("ABC")).isEqualTo(ROUTED);
 	}
 
 	@Test
 	public void isSatisfiedBy_WrongOrigin() {
-		assertThat(routed(HANGZHOU, CHICAGO, hour(30)).routingStatusOf("ABC")).isEqualTo(MISROUTED);
+		assertThat(routed(HANGZHOU, CHICAGO, hour(30)).tracking().routingStatusOf("ABC")).isEqualTo(MISROUTED);
 	}
 
 	@Test
 	public void isSatisfiedBy_WrongDestination() {
-		assertThat(routed(HONGKONG, DALLAS, hour(30)).routingStatusOf("ABC")).isEqualTo(MISROUTED);
+		assertThat(routed(HONGKONG, DALLAS, hour(30)).tracking().routingStatusOf("ABC")).isEqualTo(MISROUTED);
 	}
 
 	@Test
 	public void isSatisfiedBy_MissedDeadline() {
-		assertThat(routed(HONGKONG, CHICAGO, hour(15)).routingStatusOf("ABC")).isEqualTo(MISROUTED);
+		assertThat(routed(HONGKONG, CHICAGO, hour(15)).tracking().routingStatusOf("ABC")).isEqualTo(MISROUTED);
 	}
 
 	@Test
 	public void aCargoWithoutAnItineraryIsNotRouted() {
 		Shipping booked = Shipping.empty().bookCargo("ABC", HONGKONG, CHICAGO, hour(30)).get();
-		assertThat(booked.routingStatusOf("ABC")).isEqualTo(NOT_ROUTED);
+		assertThat(booked.tracking().routingStatusOf("ABC")).isEqualTo(NOT_ROUTED);
 	}
 }

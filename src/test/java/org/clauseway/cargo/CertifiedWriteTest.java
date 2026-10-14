@@ -49,7 +49,7 @@ public class CertifiedWriteTest {
 	public void aRouteChosenForASpecificationTheWorldHasLeftIsRefused() {
 		SharedDatabase store = bookedStore();
 		Shipping routing = open(store, "route");
-		List<Leg> chosen = routing.routeCandidatesOf("XYZ").get(0);
+		List<Leg> chosen = routing.tracking().routeCandidatesOf("XYZ").get(0);
 		Shipping routed = routing.assignToRoute("XYZ", chosen);
 
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
@@ -58,7 +58,7 @@ public class CertifiedWriteTest {
 		Try<Nothing> refused = routed.commit();
 		assertThat(refused.isFailure()).isTrue();
 		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
-		assertThat(open(store, "check").routingStatusOf("XYZ")).isEqualTo(NOT_ROUTED);
+		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(NOT_ROUTED);
 	}
 
 	/**
@@ -77,7 +77,7 @@ public class CertifiedWriteTest {
 				.commit().isSuccess()).isTrue();
 
 		assertThat(routed.commit().isSuccess()).isTrue();
-		assertThat(open(store, "check").routingStatusOf("XYZ")).isEqualTo(MISROUTED);
+		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(MISROUTED);
 	}
 
 	/** Two parties re-specify the same cargo: each read the specification it replaces; the second commit is refused. */
@@ -91,7 +91,7 @@ public class CertifiedWriteTest {
 		Try<Nothing> refused = toMelbourneSooner.commit();
 		assertThat(refused.isFailure()).isTrue();
 		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
-		assertThat(open(store, "check").routeSpecificationOf("XYZ"))
+		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
 				.contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
 	}
 
@@ -100,15 +100,15 @@ public class CertifiedWriteTest {
 	public void theRefusedPartyReSolvesAndLands() {
 		SharedDatabase store = bookedStore();
 		Shipping stale = open(store, "route");
-		List<Leg> chosen = stale.routeCandidatesOf("XYZ").get(0);
+		List<Leg> chosen = stale.tracking().routeCandidatesOf("XYZ").get(0);
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
 		assertThat(stale.assignToRoute("XYZ", chosen).commit().isFailure()).isTrue();
 
 		Shipping fresh = open(store, "again");
-		List<Leg> rechosen = fresh.routeCandidatesOf("XYZ").get(0);
+		List<Leg> rechosen = fresh.tracking().routeCandidatesOf("XYZ").get(0);
 		assertThat(rechosen).containsExactly(new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
 		assertThat(fresh.assignToRoute("XYZ", rechosen).commit().isSuccess()).isTrue();
-		assertThat(open(store, "check").routingStatusOf("XYZ")).isEqualTo(ROUTED);
+		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(ROUTED);
 	}
 }

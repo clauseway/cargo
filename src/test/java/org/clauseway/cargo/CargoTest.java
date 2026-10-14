@@ -64,7 +64,7 @@ public class CargoTest {
 
 	@Test
 	public void construction() {
-		Delivery d = bookedStockholmMelbourne().deliveryOf("XYZ");
+		Delivery d = bookedStockholmMelbourne().tracking().deliveryOf("XYZ");
 		assertThat(d.getRoutingStatus()).isEqualTo(RoutingStatus.NOT_ROUTED);
 		assertThat(d.getTransportStatus()).isEqualTo(TransportStatus.NOT_RECEIVED);
 		assertThat(d.getLastKnownLocation()).isEmpty();
@@ -79,12 +79,12 @@ public class CargoTest {
 
 	@Test
 	public void lastKnownLocationUnknownWhenNoEvents() {
-		assertThat(bookedStockholmMelbourne().deliveryOf("XYZ").getLastKnownLocation()).isEmpty();
+		assertThat(bookedStockholmMelbourne().tracking().deliveryOf("XYZ").getLastKnownLocation()).isEmpty();
 	}
 
 	@Test
 	public void lastKnownLocationReceived() {
-		Delivery d = handled(bookedStockholmMelbourne(), "XYZ", 1, RECEIVE, STOCKHOLM).deliveryOf("XYZ");
+		Delivery d = handled(bookedStockholmMelbourne(), "XYZ", 1, RECEIVE, STOCKHOLM).tracking().deliveryOf("XYZ");
 		assertThat(d.getLastKnownLocation()).contains(STOCKHOLM);
 		assertThat(d.getTransportStatus()).isEqualTo(TransportStatus.IN_PORT);
 		assertThat(d.getCurrentVoyage()).isEmpty();
@@ -100,7 +100,7 @@ public class CargoTest {
 
 	@Test
 	public void lastKnownLocationUnloaded() {
-		Delivery d = offHongKong().deliveryOf("XYZ");
+		Delivery d = offHongKong().tracking().deliveryOf("XYZ");
 		assertThat(d.getLastKnownLocation()).contains(HONGKONG);
 		assertThat(d.getTransportStatus()).isEqualTo(TransportStatus.IN_PORT);
 		assertThat(d.getCurrentVoyage()).isEmpty();
@@ -112,7 +112,7 @@ public class CargoTest {
 		s = handled(s, "XYZ", 1, LOAD, STOCKHOLM, VOYAGE);
 		s = handled(s, "XYZ", 2, UNLOAD, HAMBURG, VOYAGE);
 		s = handled(s, "XYZ", 3, LOAD, HAMBURG, VOYAGE);
-		Delivery d = s.deliveryOf("XYZ");
+		Delivery d = s.tracking().deliveryOf("XYZ");
 		assertThat(d.getLastKnownLocation()).contains(HAMBURG);
 		assertThat(d.getTransportStatus()).isEqualTo(TransportStatus.ONBOARD_CARRIER);
 		assertThat(d.getCurrentVoyage()).contains(VOYAGE);
@@ -124,7 +124,7 @@ public class CargoTest {
 		s = handled(s, "XYZ", 5, LOAD, HONGKONG, VOYAGE);
 		s = handled(s, "XYZ", 7, UNLOAD, MELBOURNE, VOYAGE);
 		s = handled(s, "XYZ", 9, CLAIM, MELBOURNE);
-		Delivery d = s.deliveryOf("XYZ");
+		Delivery d = s.tracking().deliveryOf("XYZ");
 		assertThat(d.getLastKnownLocation()).contains(MELBOURNE);
 		assertThat(d.getTransportStatus()).isEqualTo(TransportStatus.CLAIMED);
 	}
@@ -134,19 +134,19 @@ public class CargoTest {
 	@Test
 	public void isUnloadedAtFinalDestination() {
 		Shipping s = withItinerary(HANGZHOU, TOKYO, NEWYORK);
-		assertThat(s.deliveryOf("CARGO1").isUnloadedAtDestination()).isFalse();
+		assertThat(s.tracking().deliveryOf("CARGO1").isUnloadedAtDestination()).isFalse();
 
 		s = handled(s, "CARGO1", 1, RECEIVE, HANGZHOU);
-		assertThat(s.deliveryOf("CARGO1").isUnloadedAtDestination()).as("unrelated event").isFalse();
+		assertThat(s.tracking().deliveryOf("CARGO1").isUnloadedAtDestination()).as("unrelated event").isFalse();
 
 		s = handled(s, "CARGO1", 2, UNLOAD, TOKYO, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").isUnloadedAtDestination()).as("unload, not at destination").isFalse();
+		assertThat(s.tracking().deliveryOf("CARGO1").isUnloadedAtDestination()).as("unload, not at destination").isFalse();
 
 		s = handled(s, "CARGO1", 3, CUSTOMS, NEWYORK);
-		assertThat(s.deliveryOf("CARGO1").isUnloadedAtDestination()).as("at destination, not an unload").isFalse();
+		assertThat(s.tracking().deliveryOf("CARGO1").isUnloadedAtDestination()).as("at destination, not an unload").isFalse();
 
 		s = handled(s, "CARGO1", 4, UNLOAD, NEWYORK, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").isUnloadedAtDestination()).isTrue();
+		assertThat(s.tracking().deliveryOf("CARGO1").isUnloadedAtDestination()).isTrue();
 	}
 
 	// -- misdirection ----------------------------------------------------
@@ -154,12 +154,12 @@ public class CargoTest {
 	@Test
 	public void aCargoWithNoItineraryIsNotMisdirected() {
 		Shipping s = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).get();
-		assertThat(s.deliveryOf("TRKID").isMisdirected()).isFalse();
+		assertThat(s.tracking().deliveryOf("TRKID").isMisdirected()).isFalse();
 	}
 
 	@Test
 	public void aCargoWithNoHandlingIsNotMisdirected() {
-		assertThat(withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).deliveryOf("CARGO1").isMisdirected()).isFalse();
+		assertThat(withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).tracking().deliveryOf("CARGO1").isMisdirected()).isFalse();
 	}
 
 	@Test
@@ -172,13 +172,13 @@ public class CargoTest {
 		s = handled(s, "CARGO1", 90, UNLOAD, GOTHENBURG, VOYAGE);
 		s = handled(s, "CARGO1", 110, CLAIM, GOTHENBURG);
 		s = handled(s, "CARGO1", 130, CUSTOMS, GOTHENBURG);
-		assertThat(s.deliveryOf("CARGO1").isMisdirected()).isFalse();
+		assertThat(s.tracking().deliveryOf("CARGO1").isMisdirected()).isFalse();
 	}
 
 	@Test
 	public void receivedOffTheItineraryIsMisdirected() {
 		Shipping s = handled(withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG), "CARGO1", 10, RECEIVE, HANGZHOU);
-		assertThat(s.deliveryOf("CARGO1").isMisdirected()).isTrue();
+		assertThat(s.tracking().deliveryOf("CARGO1").isMisdirected()).isTrue();
 	}
 
 	@Test
@@ -188,7 +188,7 @@ public class CargoTest {
 		s = handled(s, "CARGO1", 30, LOAD, SHANGHAI, VOYAGE);
 		s = handled(s, "CARGO1", 50, UNLOAD, ROTTERDAM, VOYAGE);
 		s = handled(s, "CARGO1", 70, LOAD, ROTTERDAM, "666");
-		assertThat(s.deliveryOf("CARGO1").isMisdirected()).isTrue();
+		assertThat(s.tracking().deliveryOf("CARGO1").isMisdirected()).isTrue();
 	}
 
 	@Test
@@ -198,21 +198,21 @@ public class CargoTest {
 		s = handled(s, "CARGO1", 30, LOAD, SHANGHAI, VOYAGE);
 		s = handled(s, "CARGO1", 50, UNLOAD, ROTTERDAM, VOYAGE);
 		s = handled(s, "CARGO1", 70, CLAIM, ROTTERDAM);
-		assertThat(s.deliveryOf("CARGO1").isMisdirected()).isTrue();
+		assertThat(s.tracking().deliveryOf("CARGO1").isMisdirected()).isTrue();
 	}
 
 	// -- eta and next expected activity (dddsample leaves this test empty) --
 
 	@Test
 	public void anUnroutedCargoHasNoEtaAndNothingExpected() {
-		Delivery d = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).get().deliveryOf("TRKID");
+		Delivery d = world().bookCargo("TRKID", SHANGHAI, GOTHENBURG, hour(100)).get().tracking().deliveryOf("TRKID");
 		assertThat(d.getEta()).isEmpty();
 		assertThat(d.getNextExpectedActivity()).isEmpty();
 	}
 
 	@Test
 	public void aRoutedCargoExpectsReceiptAtTheOriginAndArrivesWithTheLastLeg() {
-		Delivery d = withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).deliveryOf("CARGO1");
+		Delivery d = withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).tracking().deliveryOf("CARGO1");
 		assertThat(d.getEta()).contains(hour(4));
 		assertThat(d.getNextExpectedActivity()).contains(new HandlingActivity(RECEIVE, SHANGHAI, Optional.empty()));
 	}
@@ -222,33 +222,33 @@ public class CargoTest {
 		Shipping s = withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG);
 
 		s = handled(s, "CARGO1", 10, RECEIVE, SHANGHAI);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
 				.contains(new HandlingActivity(LOAD, SHANGHAI, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 30, LOAD, SHANGHAI, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
 				.contains(new HandlingActivity(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 50, UNLOAD, ROTTERDAM, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
 				.contains(new HandlingActivity(LOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 70, LOAD, ROTTERDAM, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
 				.contains(new HandlingActivity(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 90, UNLOAD, GOTHENBURG, VOYAGE);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity())
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
 				.contains(new HandlingActivity(CLAIM, GOTHENBURG, Optional.empty()));
 
 		s = handled(s, "CARGO1", 110, CLAIM, GOTHENBURG);
-		assertThat(s.deliveryOf("CARGO1").getNextExpectedActivity()).isEmpty();
+		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity()).isEmpty();
 	}
 
 	@Test
 	public void aMisdirectedCargoHasNoEtaAndNothingExpected() {
 		Delivery d = handled(withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG), "CARGO1", 10, RECEIVE, HANGZHOU)
-				.deliveryOf("CARGO1");
+				.tracking().deliveryOf("CARGO1");
 		assertThat(d.getEta()).isEmpty();
 		assertThat(d.getNextExpectedActivity()).isEmpty();
 	}

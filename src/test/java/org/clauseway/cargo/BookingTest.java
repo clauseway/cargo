@@ -38,7 +38,7 @@ public class BookingTest {
 	public void originAndDestinationCannotBeTheSame() {
 		Shipping s = Shipping.empty();
 		assertThat(s.bookCargo("XYZ", STOCKHOLM, STOCKHOLM, hour(100)).isFailure()).isTrue();
-		assertThat(s.specificationDenials(STOCKHOLM, STOCKHOLM))
+		assertThat(s.tracking().specificationDenials(STOCKHOLM, STOCKHOLM))
 				.containsExactly("origin and destination are the same");
 	}
 
@@ -46,7 +46,7 @@ public class BookingTest {
 	public void aNewSpecificationReplacesTheOld() {
 		Shipping s = open(bookedStore(), "reroute")
 				.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get();
-		assertThat(s.routeSpecificationOf("XYZ")).contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
+		assertThat(s.tracking().routeSpecificationOf("XYZ")).contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
 	}
 
 	@Test
@@ -57,11 +57,11 @@ public class BookingTest {
 						new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
 						new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4))))
 				.commit().isSuccess()).isTrue();
-		assertThat(open(store, "check").routingStatusOf("XYZ")).isEqualTo(RoutingStatus.ROUTED);
+		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(RoutingStatus.ROUTED);
 
 		Shipping respecified = open(store, "reroute")
 				.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(100)).get();
-		assertThat(respecified.routingStatusOf("XYZ")).isEqualTo(RoutingStatus.MISROUTED);
+		assertThat(respecified.tracking().routingStatusOf("XYZ")).isEqualTo(RoutingStatus.MISROUTED);
 	}
 
 	@Test
