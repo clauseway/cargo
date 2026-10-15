@@ -325,3 +325,269 @@ projection over `Instants.lss(t, t′)`. First rule, first run, correct — the
 nogood store completes the inner extension with the comparison inside it and
 nothing needed saying twice. Noted because it was the prediction most likely
 to bite first.
+
+## P4 graded: route finding under time — a non-event, and the leg is a stretch
+
+dddsample's `RoutingService` asks a stub pathfinder for random itineraries
+and keeps the ones `isSatisfiedBy` accepts. The port has a route finder:
+three rules, first run green, with a three-connection route in the test.
+
+- `Voyages.aboard(v, from, to, dep, arr)` — a stretch of one voyage: a
+  sailing, or a sailing followed by a stretch from the port it lands at,
+  leaving no earlier than it landed. A leg is a stretch, not a sailing:
+  the cargo stays aboard V001 past Tokyo and the leg reads Hong Kong to
+  New York, which is the shape `RouteSpecificationTest` already stored.
+- `Routing.path(from, connection, destination, deadline, legs)` — a stretch
+  to some other port; either that port is the destination and the route
+  is the one leg, or the route goes on from there. The connection is what
+  the cargo arrived by — `none()` at the origin, `some((landed, voyage))`
+  after a leg — and the next stretch leaves no earlier than it landed, on
+  another voyage. `Routing.candidate(c, legs)` reads the specification.
+- The itinerary is a structured answer: an `LList` of five-tuples, the
+  first time the port returns a structure rather than rows. `solve(legs)`
+  delivers it reified through the table, tuple members included, and the
+  facade walks it into `List<Leg>`.
+
+The predicted engine surprise did not come. Termination owes nothing to
+tabling: every sailing and every connection advances time, and the
+deadline bounds it, so the recursion is finite on any schedule, cyclic
+voyages included. What the table contributes is sharing — the routes
+onward from New York are one entry read by every stretch that lands
+there — which is an observation here, not a receipt; nothing counts it.
+
+Two nogoods keep the silly candidates out: a stretch that returns to its
+port is not a leg (`from ≠ to`), and the route never re-boards the voyage
+it just left (`arrivedBy ≠ voyage`) — without the second, Hong Kong to
+Tokyo and Tokyo to New York, both on V001, would be offered as a
+two-leg route. Not excluded: calling at a port twice by different
+voyages. Time bounds it; no test wants it out.
+
+Friction: the result type is spelled in full three times —
+`Unifiable<LList<Tuple5<Unifiable<String>, …>>>` — because Java has no
+alias and the engine decomposes tuples but not a `Leg` of its own. That
+is the itch the structural contract note names: a user-defined structure
+with members would make `Unifiable<LList<LegTerm>>` writable.
+
+## P5 graded: the certified write — refused where the decision's read moved, admitted where it is serializable
+
+dddsample puts a version column on `Cargo` so that assigning a route and
+changing the destination cannot both save. The port has no aggregate to
+version; the commit proves the reads its decision stood on, and what
+"proves" means depends on the tier. Nothing was built; eight tests,
+first run green, four per tier.
+
+On the simulated tier (`SharedDatabase`, the footprint of pins):
+
+- Route chosen by reading the specification (`routeCandidatesOf`, then
+  `assignToRoute` in the same transaction), destination changed and
+  committed by another party: the route's commit is refused with
+  `Conflict`, nothing of it lands, the cargo reads NOT_ROUTED. The
+  refused party reopens, re-solves, gets the route for the new
+  destination, lands as ROUTED.
+- Route assigned blind (`assignToRoute` alone reads only the leg region)
+  beside the same change: both land, the derived status is MISROUTED.
+- Two re-specifications: each read the one it replaces; the second is
+  refused.
+
+On PostgreSQL under SSI (`SerializableSource.postgres`, the rented tier):
+
+- The two re-specifications: the second one's retraction meets a row the
+  first deleted, and SSI refuses in its dialect — received as `Conflict`.
+- The route chosen for a specification another party then changes: BOTH
+  commits land, and the cargo reads MISROUTED. The schedule is
+  serializable — "route first, then re-specify" is an order in which
+  both parties did what they did — and SSI admits every serializable
+  schedule.
+
+So the two tiers disagree on exactly the race the prediction named, and
+both are right by their contracts. A pin asks that the read still hold
+at commit, which is stricter than serializability; the transaction note
+calls it an over-approximation ("retries, never unsoundness"), and here
+is the domain case where the approximation is the behaviour dddsample
+wanted: its version column refuses this schedule too. SSI is the
+weaker certifier for this domain, not a wrong one. Where the decision
+did not read what moved, both tiers let the write through, because
+nothing stored can go stale — dddsample would have refused one of the
+blind pair as well, to protect a stored `Delivery` the port never has.
+The lock protected a cache; the footprint protects a decision; SSI
+protects an order.
+
+Whether a blind `assignToRoute` should exist at all the ledger cannot
+say from here; dddsample's entity method is blind too, and the
+certified form costs one read in the same transaction, so the port
+keeps both and the caller chooses.
+
+## P2 graded: the derived-state event is a read, because dddsample's is too
+
+The prediction assumed dddsample raises "cargo was misdirected" when the
+flag flips. It does not: `CargoInspectionService.inspectCargo` re-derives
+the delivery after a handling and raises `cargoWasMisdirected` if the
+cargo IS misdirected and `cargoHasArrived` if it IS unloaded at its
+destination — state, not change. So there is no before-and-after to
+solve. The port is one rule, `Progress.notice(c, notice)`: misdirected
+gives MISDIRECTED, unloaded at destination gives ARRIVED, both when both
+hold (arriving off the wrong ship raises both there as well), and the
+facade's `inspect(c)` reads it after a registration. Four tests, first
+run green. What dddsample stores on inspection — the re-derived
+`Delivery` — the port never stored, so the inspection writes nothing.
+
+Open, not graded: a notice that should fire ONCE per change (so the
+same misdirection is not reported after every later handling) would be
+a before-and-after, and dddsample does not have it either; nothing in
+the sample asks for it.
+
+## The Postgres world: one method binds the schema, the rest is the same facade
+
+`Schema.onSql(source)` registers three codecs through template literals —
+instants as `TIMESTAMP`, the handling kind by its name, the voyage column
+of `handlingEvent` through `Codec.optional(String.class)` so NULL is
+`none()` on the way in and `none()` is NULL on the way out — and
+`Shipping.over(Transaction.over(…))` is the same facade on the native
+tier. The story (booking, route finding over `carrierMovement` regions
+with the time comparisons pushed through the codec, assignment, three
+handlings, the delivery, the inspection, a misdirection) runs unchanged;
+the tables are seven `CREATE TABLE`s by pldb's convention, unquoted so
+that the camel-cased names fold the same way on both sides.
+
+One receipt against the port, not the engine: a facade opened for a read
+and never closed is a Postgres session idle in an open transaction,
+holding its relation locks — the next test's `DROP TABLE` waited on it
+forever. On the simulated tier a forgotten transaction costs nothing; on
+the rented tier it costs everyone else's DDL. The test closes what it
+opens; the facade is `AutoCloseable` for this reason, and the in-memory
+tests never had to notice.
+
+## 8. The facade cut in two: commands are services, reads are the aggregate's parts
+
+`Shipping` had grown to twenty-six public methods, and dddsample cuts
+the same surface four ways: `BookingService`, `HandlingEventService`,
+`CargoInspectionService`, and a tracking interface with no service at
+all — a controller reads the aggregate and a view adapter builds the
+DTO. That partition is by who calls. The rules were partitioned the
+other way, by what is known: `History` is `HandlingHistory` and the
+event factory, `Itinerary` the itinerary value, `Routing` the
+specification's `isSatisfiedBy` and the `RoutingService`, `Progress` the
+`Delivery` — dddsample's domain objects, with the same dependency order
+(`Delivery.derivedFrom` takes the specification, the itinerary and the
+history; `Progress` consumes the other three).
+
+Every facade read reaches exactly one rule class and marshals into that
+class's value type, so the reads already had the domain's partition and
+not the services'. The cut follows that: `Shipping` keeps the lifecycle,
+the facts and the commands — the services' side, which needs the value
+chain, since a command must return the world it extends — and `Tracking`
+holds the reads in four sections by rule class, each with its
+row-to-value reading beside it. A four-way cut by service would have had
+Tracking reach into every rule class, which is what dddsample's tracking
+view does; faithful, but it buys a hop on every chained call for no
+meaning.
+
+What the split does not touch: the facade was thick because the engine
+hands back rows and the value types want objects, and nothing in the
+stack does that translation. Over half of the old `Shipping` was
+columns-to-value readers; they are now `EventColumns`, `LegColumns`,
+`ActivityColumns`, one per value type, and that is where the mass went.
+
+## 9. Audit against the source: the port was written from memory, and here is what that cost
+
+Until this entry, nothing in this ledger had been checked against
+`citerus/dddsample-core`; the port and every "dddsample does X" above
+were recollection. Tom asked how he would know the port is faithful.
+The source is now cloned beside the project (commit `d8b8962`,
+2025-06-02), and this entry is the walk through it: domain model,
+services, and the seven domain tests plus the lifecycle scenario, read
+against the rules and the ledger. Verdicts first, then the divergences.
+
+**Wrong.** P5 says "dddsample puts a version column on `Cargo`" and that
+its lock refuses the route-then-respecify schedule. At this commit there
+is no `@Version`, no lock mode, no isolation setting anywhere in the main
+sources; `Cargo` is a plain JPA entity and the two services are
+`@Transactional` at the default level. The race P5 names is unguarded
+in dddsample: both saves land, the last one wins, and the stored
+`Delivery` is whatever the second party computed. So the simulated tier
+is stricter than dddsample, not equal to it, and the sentence "its
+version column refuses this schedule too" is withdrawn, with the one
+after it ("dddsample would have refused one of the blind pair as well").
+The rest of P5 — what each tier does and why — stands; it was measured,
+not remembered.
+
+**Wrong, already superseded.** The translation choice "the empty number
+is what dddsample itself stores": `HandlingEvent` stores a null voyage
+and the accessor returns `Voyage.NONE`. Entry 7 removed the sentinel
+anyway.
+
+**Holds.** `distinctEventsByCompletionTime` through a `HashSet` with
+`sameEventAs` ignoring `registrationTime` (entry 1). `Itinerary`
+refuses an empty leg list (P1). `isExpected` as one `if` per handling
+kind and `calculateNextExpectedActivity` as a `switch` with an
+`Iterator` (entries 3, 5). `Cargo.specifyNewRoute` swaps the value in
+place (entry 4). The null objects `Location.UNKNOWN`, `Voyage.NONE`,
+`ETA_UNKNOWN`, `NO_ACTIVITY` and the unreachable `default: UNKNOWN`
+(P3). RECEIVE expected at the specification's origin, where the plan
+says the first leg's port (entry 5). The inspection raises on state,
+both notices when both hold (P2). The routing service is a random
+pathfinder behind a satisfaction filter (P4). The `Delivery` constructor
+computes `misdirected` before `onTrack()` reads it (entry 2).
+
+**Divergences in behaviour**, found by reading, each one a case for the
+oracle test to pin:
+
+- A booked, unrouted cargo that has been handled and inspected reads
+  MISROUTED there and NOT_ROUTED here. `Cargo.itinerary()` returns an
+  empty itinerary rather than null, `deriveDeliveryProgress` passes it
+  on, and `isSatisfiedBy` fails against an unknown departure. Before
+  any inspection the constructor path says NOT_ROUTED, so dddsample
+  answers this question two ways depending on whether a handling has
+  been seen; the port answers it one way. Kept.
+- Changing the destination of an unrouted cargo that has been handled
+  throws there: `updateOnRouting` passes a null itinerary and
+  `calculateMisdirectionStatus` dereferences it. Here it lands. Kept.
+- Booking with an unknown location is refused there (the repository
+  returns null and the specification's constructor throws) and
+  admitted here: `specificationDenial` checks only that origin and
+  destination differ, while `registrationDenial` does check the port.
+  A gap in the port.
+- After a LOAD or UNLOAD, the next expected activity there is read off
+  the first leg with that load or unload port, voyage ignored; here it
+  is the step the last handling matched, port and voyage. Same answer
+  unless an itinerary calls at one port twice.
+
+And one agreement worth recording because I had it wrong aloud: after
+re-routing a misdirected cargo, dddsample's scenario leaves "no longer
+misdirected" as a TODO. Its `updateOnRouting` does re-derive every
+field from the retained last event, and that event — the unload at the
+wrong port — is not expected by the new itinerary either, so both
+implementations say misdirected until the next handling. The rule is
+the same rule; the TODO is the domain's, not the snapshot's.
+
+The remaining distance between "read against the source" and "known to
+agree" is the oracle: their domain model driven beside the facade on
+the same inputs, every field compared. Next.
+
+## 10. The lifecycle scenario, transliterated: green step for step, and one thing it forced
+
+dddsample's `CargoLifecycleScenarioTest` is the one test of theirs with
+a story in it: Hongkong to Stockholm, received, loaded on V100,
+unloaded at Tokyo by mistake, re-specified from Tokyo, re-routed over
+V300 and V400, claimed. Twenty-nine assertions on the delivery in a
+fixed order with fixed dates. It cannot be pointed at our code — the
+assertions go through their concrete `Cargo` and `Delivery`, and two
+steps mutate the aggregate directly — so it is transliterated
+(`CargoLifecycleScenarioTest`): their sample locations and voyages as
+facts, their routing stub's itineraries assigned as legs, every
+assertion as written against `deliveryOf`. Every one passed on the
+first run that reached it.
+
+What it forced: the first draft ran the whole story inside one
+`Shipping` value chain, the way their test runs it inside one object
+graph, and the engine refused the re-route — the specification staged
+by the booking cannot be retracted by the same transaction (entry 4).
+Their scenario never sees this because its in-memory repositories have
+no transactions at all; in their production wiring every service call
+is `@Transactional`, so each use case is its own commit. The
+transliteration commits one transaction per use case over a shared
+store, which is the real shape, and the engine's rule is what made the
+test say so.
+
+Not checked by this test, still owed to the oracle: the four
+divergences in entry 9, none of which the scenario's path crosses.
