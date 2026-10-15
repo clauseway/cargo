@@ -88,6 +88,26 @@ public class BookingTest {
 				.containsExactlyInAnyOrder("unknown voyage", "unknown unload port", "unknown load port");
 	}
 
+	/** Cargo.assignToRoute swaps the itinerary value; a leg both routes share is neither spent nor new. */
+	@Test
+	public void aRouteSharingALegWithTheCurrentOneReplacesIt() {
+		SharedDatabase store = bookedStore();
+		Leg first = new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2));
+		assertThat(open(store, "route").assignToRoute("XYZ", Arrays.asList(
+				first, new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
+		assertThat(open(store, "reroute").assignToRoute("XYZ", Arrays.asList(first)).get().commit().isSuccess()).isTrue();
+		assertThat(open(store, "check").tracking().itineraryOf("XYZ")).containsExactly(first);
+	}
+
+	/** Cargo.specifyNewRoute with the specification the cargo already has: the same world. */
+	@Test
+	public void theSameSpecificationAgainChangesNothing() {
+		SharedDatabase store = bookedStore();
+		assertThat(open(store, "again").specifyNewRoute("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get().commit().isSuccess()).isTrue();
+		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
+				.contains(new RouteSpecification(STOCKHOLM, MELBOURNE, hour(100)));
+	}
+
 	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
 	@Test
 	public void aTrackingIdIsBookedOnce() {

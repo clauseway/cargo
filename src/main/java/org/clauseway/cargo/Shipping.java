@@ -126,11 +126,15 @@ public final class Shipping implements AutoCloseable {
 				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))));
 	}
 
-	/** The specification is a value: the old one goes whole, the new one lands; the cargo's origin stays. */
+	/** The specification is a value: the old one goes whole, the new one lands, the same one is nothing; the cargo's origin stays. */
 	public Try<Shipping> specifyNewRoute(String trackingId, String origin, String destination,
 			Instant arrivalDeadline) {
 		return command(tracking.reroutingDenials(trackingId, origin, destination), () -> {
-			List<Literal> spent = tracking.routeSpecificationOf(trackingId)
+			Optional<RouteSpecification> current = tracking.routeSpecificationOf(trackingId);
+			if (current.filter(new RouteSpecification(origin, destination, arrivalDeadline)::equals).isPresent()) {
+				return this;
+			}
+			List<Literal> spent = current
 					.map(old -> routeSpecification(db, lval(trackingId), lval(old.getOrigin()),
 							lval(old.getDestination()), lval(old.getArrivalDeadline())))
 					.map(Collections::singletonList).orElse(Collections.emptyList());
@@ -139,11 +143,12 @@ public final class Shipping implements AutoCloseable {
 		});
 	}
 
-	/** The itinerary is a value: the old legs go whole, the new ones land in order. */
+	/** The itinerary is a value: the old legs go, the new ones land in order; a leg both have at one index is neither. */
 	public Try<Shipping> assignToRoute(String trackingId, List<Leg> legs) {
 		return command(tracking.routingDenials(trackingId, legs), () -> {
-			List<Literal> spent = legLiterals(trackingId, tracking.itineraryOf(trackingId));
-			return new Shipping(db.retracting(spent).asserting(legLiterals(trackingId, legs)));
+			List<Leg> current = tracking.itineraryOf(trackingId);
+			return new Shipping(db.retracting(legsDiffering(trackingId, current, legs))
+					.asserting(legsDiffering(trackingId, legs, current)));
 		});
 	}
 
@@ -172,8 +177,10 @@ public final class Shipping implements AutoCloseable {
 				lval(completionTime), lval(registrationTime));
 	}
 
-	private List<Literal> legLiterals(String trackingId, List<Leg> legs) {
+	/** The legs of one itinerary the other does not have at the same index, as facts. */
+	private List<Literal> legsDiffering(String trackingId, List<Leg> legs, List<Leg> other) {
 		return IntStream.range(0, legs.size())
+				.filter(i -> i >= other.size() || !legs.get(i).equals(other.get(i)))
 				.mapToObj(i -> leg(db, lval(trackingId), lval(i), lval(legs.get(i).getVoyageNumber()),
 						lval(legs.get(i).getLoadLocation()), lval(legs.get(i).getUnloadLocation()),
 						lval(legs.get(i).getLoadTime()), lval(legs.get(i).getUnloadTime())))
