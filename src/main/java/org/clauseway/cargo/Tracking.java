@@ -191,10 +191,11 @@ public final class Tracking {
 				.collect(Collectors.toList());
 	}
 
-	/** Every rule the specification would violate, by name; empty means allowed. */
-	public List<String> specificationDenials(String origin, String destination) {
+	/** Every rule the booking would violate, by name; empty means allowed. */
+	public List<String> bookingDenials(String trackingId, String origin, String destination) {
 		Unifiable<String> reason = lvar();
-		return values(Query.of(routing.specificationDenial(lval(origin), lval(destination), reason)).solve(reason));
+		return values(Query.of(routing.bookingDenial(lval(trackingId), lval(origin), lval(destination), reason))
+				.solve(reason));
 	}
 
 	/** Every rule the re-specification would violate, by name; empty means allowed. */

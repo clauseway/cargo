@@ -52,6 +52,19 @@ public final class Routing {
 						.and(reason.unifies("origin and destination are the same")));
 	}
 
+	/** Booking's denials: the tracking id must be free, and the specification must hold up. */
+	public Literal bookingDenial(Unifiable<String> trackingId, Unifiable<String> origin,
+			Unifiable<String> destination, Unifiable<String> reason) {
+		return Literal.relation(Routing.class, "bookingDenial")
+				.arg("trackingId", trackingId)
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
+				.solving(cargo(db, trackingId, projected())
+						.and(reason.unifies("already booked"))
+						.or(specificationDenial(origin, destination, reason)));
+	}
+
 	/** Cargo.specifyNewRoute's denials: the cargo must exist, and the specification must hold up. */
 	public Literal reroutingDenial(Unifiable<String> trackingId, Unifiable<String> origin,
 			Unifiable<String> destination, Unifiable<String> reason) {

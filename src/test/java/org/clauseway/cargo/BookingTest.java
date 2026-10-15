@@ -38,8 +38,16 @@ public class BookingTest {
 	public void originAndDestinationCannotBeTheSame() {
 		Shipping s = Shipping.empty();
 		assertThat(s.bookCargo("XYZ", STOCKHOLM, STOCKHOLM, hour(100)).isFailure()).isTrue();
-		assertThat(s.tracking().specificationDenials(STOCKHOLM, STOCKHOLM))
+		assertThat(s.tracking().bookingDenials("XYZ", STOCKHOLM, STOCKHOLM))
 				.containsExactly("origin and destination are the same");
+	}
+
+	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
+	@Test
+	public void aTrackingIdIsBookedOnce() {
+		Shipping s = open(bookedStore(), "again");
+		assertThat(s.bookCargo("XYZ", HAMBURG, MELBOURNE, hour(100)).isFailure()).isTrue();
+		assertThat(s.tracking().bookingDenials("XYZ", HAMBURG, MELBOURNE)).containsExactly("already booked");
 	}
 
 	@Test

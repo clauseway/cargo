@@ -95,6 +95,21 @@ public class CertifiedWriteTest {
 				.contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
 	}
 
+	/** Two parties book one tracking id: each read its absence; the second commit is refused. */
+	@Test
+	public void twoBookingsOfOneTrackingIdTheSecondIsRefused() {
+		SharedDatabase store = SharedDatabase.empty();
+		Shipping toMelbourne = open(store, "a").bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
+		Shipping toHamburg = open(store, "b").bookCargo("XYZ", STOCKHOLM, HAMBURG, hour(50)).get();
+
+		assertThat(toMelbourne.commit().isSuccess()).isTrue();
+		Try<Nothing> refused = toHamburg.commit();
+		assertThat(refused.isFailure()).isTrue();
+		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
+		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
+				.contains(new RouteSpecification(STOCKHOLM, MELBOURNE, hour(100)));
+	}
+
 	/** The same route, chosen after the world settled, lands as routed. */
 	@Test
 	public void theRefusedPartyReSolvesAndLands() {

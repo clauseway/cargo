@@ -109,7 +109,7 @@ public final class Shipping implements AutoCloseable {
 
 	/** Booking: the cargo exists, with its origin and its first requirement. */
 	public Try<Shipping> bookCargo(String trackingId, String origin, String destination, Instant arrivalDeadline) {
-		return command(tracking.specificationDenials(origin, destination), () -> with(
+		return command(tracking.bookingDenials(trackingId, origin, destination), () -> with(
 				cargo(db, lval(trackingId), lval(origin)),
 				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))));
 	}
