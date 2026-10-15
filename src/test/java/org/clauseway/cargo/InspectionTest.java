@@ -24,7 +24,7 @@ public class InspectionTest {
 	private static final String WRONG_VOYAGE = "666";
 
 	private static Shipping routed() {
-		return Shipping.empty()
+		return SampleLocations.declaredIn(Shipping.empty())
 				.withVoyage(VOYAGE)
 				.withCarrierMovement(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2))
 				.withCarrierMovement(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4))

@@ -24,7 +24,7 @@ public class RouteSpecificationTest {
 
 	/** Hong Kong to New York on V001, New York to Chicago on V002, arriving at hour 20. */
 	private static Shipping routed(String origin, String destination, Instant deadline) {
-		return Shipping.empty()
+		return SampleLocations.declaredIn(Shipping.empty())
 				.withVoyage("V001")
 				.withCarrierMovement("V001", HONGKONG, TOKYO, hour(1), hour(5))
 				.withCarrierMovement("V001", TOKYO, NEWYORK, hour(6), hour(10))
@@ -60,7 +60,7 @@ public class RouteSpecificationTest {
 
 	@Test
 	public void aCargoWithoutAnItineraryIsNotRouted() {
-		Shipping booked = Shipping.empty().bookCargo("ABC", HONGKONG, CHICAGO, hour(30)).get();
+		Shipping booked = SampleLocations.declaredIn(Shipping.empty()).bookCargo("ABC", HONGKONG, CHICAGO, hour(30)).get();
 		assertThat(booked.tracking().routingStatusOf("ABC")).isEqualTo(NOT_ROUTED);
 	}
 }

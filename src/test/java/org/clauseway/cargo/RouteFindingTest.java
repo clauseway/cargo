@@ -27,7 +27,7 @@ public class RouteFindingTest {
 	 * on from Chicago to Dallas. Nothing sails to Gothenburg.
 	 */
 	private static Shipping booked(String origin, String destination, Instant deadline) {
-		return Shipping.empty()
+		return SampleLocations.declaredIn(Shipping.empty())
 				.withVoyage("V001")
 				.withCarrierMovement("V001", HONGKONG, TOKYO, hour(1), hour(5))
 				.withCarrierMovement("V001", TOKYO, NEWYORK, hour(6), hour(10))

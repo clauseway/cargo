@@ -31,7 +31,7 @@ public class CargoTest {
 
 	/** Voyage 0123: Stockholm, Hamburg, Hong Kong, Melbourne. */
 	private static Shipping world() {
-		return Shipping.empty()
+		return SampleLocations.declaredIn(Shipping.empty())
 				.withVoyage(VOYAGE)
 				.withCarrierMovement(VOYAGE, STOCKHOLM, HAMBURG, hour(1), hour(2))
 				.withCarrierMovement(VOYAGE, HAMBURG, HONGKONG, hour(3), hour(4))

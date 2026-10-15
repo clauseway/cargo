@@ -30,7 +30,7 @@ public class CertifiedWriteTest {
 	/** Voyage 0123 Stockholm, Hamburg, Melbourne; cargo XYZ booked Stockholm to Melbourne; committed. */
 	private static SharedDatabase bookedStore() {
 		SharedDatabase store = SharedDatabase.empty();
-		assertThat(open(store, "seed")
+		assertThat(SampleLocations.declaredIn(open(store, "seed"))
 				.withVoyage("0123")
 				.withCarrierMovement("0123", STOCKHOLM, HAMBURG, hour(1), hour(2))
 				.withCarrierMovement("0123", HAMBURG, MELBOURNE, hour(3), hour(4))
@@ -99,6 +99,7 @@ public class CertifiedWriteTest {
 	@Test
 	public void twoBookingsOfOneTrackingIdTheSecondIsRefused() {
 		SharedDatabase store = SharedDatabase.empty();
+		assertThat(SampleLocations.declaredIn(open(store, "seed")).commit().isSuccess()).isTrue();
 		Shipping toMelbourne = open(store, "a").bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
 		Shipping toHamburg = open(store, "b").bookCargo("XYZ", STOCKHOLM, HAMBURG, hour(50)).get();
 

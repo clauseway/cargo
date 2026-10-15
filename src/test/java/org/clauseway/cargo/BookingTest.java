@@ -25,7 +25,7 @@ public class BookingTest {
 	/** Voyage 0123 and cargo XYZ booked Stockholm to Melbourne, committed. */
 	private static SharedDatabase bookedStore() {
 		SharedDatabase store = SharedDatabase.empty();
-		assertThat(open(store, "seed")
+		assertThat(SampleLocations.declaredIn(open(store, "seed"))
 				.withVoyage("0123")
 				.withCarrierMovement("0123", STOCKHOLM, HAMBURG, hour(1), hour(2))
 				.withCarrierMovement("0123", HAMBURG, MELBOURNE, hour(3), hour(4))
@@ -36,10 +36,26 @@ public class BookingTest {
 
 	@Test
 	public void originAndDestinationCannotBeTheSame() {
-		Shipping s = Shipping.empty();
+		Shipping s = SampleLocations.declaredIn(Shipping.empty());
 		assertThat(s.bookCargo("XYZ", STOCKHOLM, STOCKHOLM, hour(100)).isFailure()).isTrue();
 		assertThat(s.tracking().bookingDenials("XYZ", STOCKHOLM, STOCKHOLM))
 				.containsExactly("origin and destination are the same");
+	}
+
+	/** BookingServiceImpl looks both ports up; an unknown one has no Location, and the specification cannot be made. */
+	@Test
+	public void bookingNeedsKnownPorts() {
+		Shipping s = SampleLocations.declaredIn(Shipping.empty());
+		assertThat(s.bookCargo("XYZ", "ZZZZZ", MELBOURNE, hour(100)).isFailure()).isTrue();
+		assertThat(s.tracking().bookingDenials("XYZ", "ZZZZZ", "YYYYY"))
+				.containsExactlyInAnyOrder("unknown origin", "unknown destination");
+	}
+
+	@Test
+	public void reroutingNeedsKnownPorts() {
+		Shipping s = open(bookedStore(), "reroute");
+		assertThat(s.specifyNewRoute("XYZ", STOCKHOLM, "ZZZZZ", hour(50)).isFailure()).isTrue();
+		assertThat(s.tracking().reroutingDenials("XYZ", STOCKHOLM, "ZZZZZ")).containsExactly("unknown destination");
 	}
 
 	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
@@ -84,7 +100,7 @@ public class BookingTest {
 	 */
 	@Test
 	public void reSpecifyingBeforeTheBookingIsCommittedIsRefused() {
-		Shipping booked = Shipping.empty().bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
+		Shipping booked = SampleLocations.declaredIn(Shipping.empty()).bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
 		assertThatThrownBy(() -> booked.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("opposite polarity");

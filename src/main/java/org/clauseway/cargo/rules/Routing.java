@@ -4,6 +4,7 @@ package org.clauseway.cargo.rules;
 // ABOUTME: satisfies it, the routing status that follows, and the routes that would.
 
 import static org.clauseway.cargo.Schema.cargo;
+import static org.clauseway.cargo.Schema.location;
 import static org.clauseway.cargo.Schema.routeSpecification;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Matche.loption;
@@ -41,15 +42,19 @@ public final class Routing {
 		this.voyages = voyages;
 	}
 
-	/** The RouteSpecification constructor's guard: a route must go somewhere. */
+	/** The RouteSpecification constructor's guard, and the ports it is made from: known, and not one and the same. */
 	public Literal specificationDenial(Unifiable<String> origin, Unifiable<String> destination,
 			Unifiable<String> reason) {
 		return Literal.relation(Routing.class, "specificationDenial")
 				.arg("origin", origin)
 				.arg("destination", destination)
 				.arg("reason", reason)
-				.solving(origin.unifies(destination)
-						.and(reason.unifies("origin and destination are the same")));
+				.solving(exclude(location(db, origin, projected()))
+						.and(reason.unifies("unknown origin"))
+						.or(exclude(location(db, destination, projected()))
+								.and(reason.unifies("unknown destination")))
+						.or(origin.unifies(destination)
+								.and(reason.unifies("origin and destination are the same"))));
 	}
 
 	/** Booking's denials: the tracking id must be free, and the specification must hold up. */

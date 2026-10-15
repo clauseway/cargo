@@ -38,7 +38,7 @@ public class HandlingHistoryTest {
 
 	@Test
 	public void anUnhandledCargoHasNoLastEvent() {
-		Shipping booked = Shipping.empty().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
+		Shipping booked = SampleLocations.declaredIn(Shipping.empty()).bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
 		assertThat(booked.tracking().lastEventOf("ABC")).isEmpty();
 	}
 }
