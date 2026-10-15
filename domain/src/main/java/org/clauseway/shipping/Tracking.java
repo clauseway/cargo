@@ -62,9 +62,7 @@ public final class Tracking {
 	/** Every rule the registration would violate, by name; empty means allowed. */
 	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
 			Optional<String> voyageNumber) {
-		Unifiable<String> reason = lvar();
-		return values(Query.of(history.registrationDenial(lval(trackingId), lval(type), lval(location),
-				LOption.of(voyageNumber), reason)).solve(reason));
+		return history.registrationDenials(trackingId, type, location, voyageNumber);
 	}
 
 	/** The variables of one event's columns and the row-to-value reading over them. */
@@ -88,24 +86,15 @@ public final class Tracking {
 
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
 	public List<Leg> itineraryOf(String trackingId) {
-		Unifiable<Integer> index = lvar();
-		LegColumns c = new LegColumns();
-		return c.legs(Query.of(cargo.itinerary(lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
-				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
-				.collect(Collectors.toList());
+		return cargo.itineraryOf(trackingId);
 	}
 
 	public Optional<Leg> firstLegOf(String trackingId) {
-		LegColumns c = new LegColumns();
-		return c.legs(c.select(itinerary.firstLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
-				.findFirst();
+		return cargo.firstLegOf(trackingId);
 	}
 
 	public Optional<Leg> lastLegOf(String trackingId) {
-		LegColumns c = new LegColumns();
-		return c.legs(c.select(itinerary.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
-				.findFirst();
+		return cargo.lastLegOf(trackingId);
 	}
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
@@ -122,24 +111,6 @@ public final class Tracking {
 	public boolean isExpected(String trackingId, HandlingEvent event) {
 		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber())));
-	}
-
-	/** The variables of one leg's columns and the row-to-value reading over them. */
-	private static final class LegColumns {
-		final Unifiable<String> voyageNumber = lvar();
-		final Unifiable<String> load = lvar();
-		final Unifiable<String> unload = lvar();
-		final Unifiable<Instant> loadTime = lvar();
-		final Unifiable<Instant> unloadTime = lvar();
-
-		Stream<Row> select(Literal legs) {
-			return Query.of(legs).select(voyageNumber, load, unload, loadTime, unloadTime).rows();
-		}
-
-		Stream<Leg> legs(Stream<Row> rows) {
-			return rows.map(row -> new Leg(row.get(voyageNumber).get(), row.get(load).get(), row.get(unload).get(),
-					row.get(loadTime).get(), row.get(unloadTime).get()));
-		}
 	}
 
 	/** The variables of one planned handling's columns and the row-to-value reading over them. */
@@ -161,14 +132,7 @@ public final class Tracking {
 	// -- routing: the specification and the routes that satisfy it ------------
 
 	public Optional<RouteSpecification> routeSpecificationOf(String trackingId) {
-		Unifiable<String> origin = lvar();
-		Unifiable<String> destination = lvar();
-		Unifiable<Instant> deadline = lvar();
-		return Query.of(cargo.specification(lval(trackingId), origin, destination, deadline))
-				.select(origin, destination, deadline).rows()
-				.map(row -> new RouteSpecification(row.get(origin).get(), row.get(destination).get(),
-						row.get(deadline).get()))
-				.findFirst();
+		return cargo.routeSpecificationOf(trackingId);
 	}
 
 	public RoutingStatus routingStatusOf(String trackingId) {
@@ -190,26 +154,17 @@ public final class Tracking {
 
 	/** Every rule the booking would violate, by name; empty means allowed. */
 	public List<String> bookingDenials(String trackingId, String origin, String destination) {
-		Unifiable<String> reason = lvar();
-		return values(Query.of(routing.bookingDenial(lval(trackingId), lval(origin), lval(destination), reason))
-				.solve(reason));
+		return cargo.bookingDenials(trackingId, origin, destination);
 	}
 
 	/** Every rule the route assignment would violate, by name; empty means allowed. */
 	public List<String> routingDenials(String trackingId, List<Leg> legs) {
-		Unifiable<String> reason = lvar();
-		Stream<String> cargo = Query.of(routing.routingDenial(lval(trackingId), reason)).solve(reason).map(Reified::get);
-		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
-		Stream<String> parts = legs.stream().flatMap(leg -> Query.of(routing.legDenial(lval(leg.getVoyageNumber()),
-				lval(leg.getLoadLocation()), lval(leg.getUnloadLocation()), reason)).solve(reason).map(Reified::get));
-		return Stream.concat(cargo, Stream.concat(shape, parts)).distinct().collect(Collectors.toList());
+		return cargo.routingDenials(trackingId, legs);
 	}
 
 	/** Every rule the re-specification would violate, by name; empty means allowed. */
 	public List<String> reroutingDenials(String trackingId, String origin, String destination) {
-		Unifiable<String> reason = lvar();
-		return values(Query.of(routing.reroutingDenial(lval(trackingId), lval(origin), lval(destination), reason))
-				.solve(reason));
+		return cargo.reroutingDenials(trackingId, origin, destination);
 	}
 
 	// -- progress: the delivery and the inspection ----------------------------

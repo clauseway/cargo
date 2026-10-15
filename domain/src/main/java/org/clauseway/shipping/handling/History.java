@@ -1,7 +1,7 @@
 package org.clauseway.shipping.handling;
 
 // ABOUTME: The HandlingEvent aggregate: the handlings as reported, written here
-// ABOUTME: alone, and the history read as rules — each event, the last, what a registration violates.
+// ABOUTME: alone by a registration that guards itself; the history read as rules — each event, the last.
 
 import static org.clauseway.logic.goals.Matche.loption;
 import static org.clauseway.logic.goals.Matche.matche;
@@ -11,8 +11,13 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import org.clauseway.logic.finitedomain.Instants;
+import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.unification.structures.LOption;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
@@ -20,23 +25,25 @@ import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.sql.Codec;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.Command;
 import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.Schema;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
+import org.clauseway.vavr.control.Try;
 
 public final class History {
 
 	private static final Codec<HandlingType> HANDLING_TYPE = Codec.of(HandlingType.class, String.class, Enum::name, HandlingType::valueOf);
 	private static final Codec<LOption<String>> OPTIONAL_VOYAGE = Codec.optional(String.class);
 
-	private final AnswerSource db;
+	private final Transaction db;
 	private final Cargo cargo;
 	private final Locations locations;
 	private final Voyages voyages;
 
-	public History(AnswerSource db, Cargo cargo, Locations locations, Voyages voyages) {
+	public History(Transaction db, Cargo cargo, Locations locations, Voyages voyages) {
 		this.db = db;
 		this.cargo = cargo;
 		this.locations = locations;
@@ -152,8 +159,23 @@ public final class History {
 						.and(exclude(later(trackingId, completed))));
 	}
 
-	/** A handling registered: the fact lands, with the report's own time. */
-	public static Transaction register(Transaction db, String trackingId, HandlingType type, String location,
+	/** Every rule the registration would violate, by name; empty means allowed. */
+	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
+			Optional<String> voyageNumber) {
+		Unifiable<String> reason = lvar();
+		return Query.of(registrationDenial(lval(trackingId), lval(type), lval(location), LOption.of(voyageNumber), reason))
+				.solve(reason).map(Reified::get).collect(Collectors.toList());
+	}
+
+	/** HandlingEventService.register: the factory's checks, then the fact. */
+	public Try<Transaction> register(String trackingId, HandlingType type, String location,
+			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
+		return Command.guarded(registrationDenials(trackingId, type, location, voyageNumber),
+				() -> land(db, trackingId, type, location, LOption.of(voyageNumber), completionTime, registrationTime));
+	}
+
+	/** A handling as reported, landed as given: the fact door, unchecked. */
+	public static Transaction land(Transaction db, String trackingId, HandlingType type, String location,
 			Unifiable<LOption<String>> voyageNumber, Instant completionTime, Instant registrationTime) {
 		return db.asserting(handlingEvent(db, lval(trackingId), lval(type), lval(location), voyageNumber,
 				lval(completionTime), lval(registrationTime)));

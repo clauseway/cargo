@@ -1,7 +1,7 @@
 package org.clauseway.shipping;
 
 // ABOUTME: The shipping domain facade — an immutable fact base over one transaction:
-// ABOUTME: each command checks its denials, then hands its aggregate the write; reads are its Tracking.
+// ABOUTME: each command is its aggregate's, guarded there; reads are its Tracking.
 
 import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;
@@ -10,9 +10,7 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 import org.clauseway.functional.Nothing;
-import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
@@ -27,16 +25,18 @@ import org.clauseway.vavr.control.Try;
 public final class Shipping implements AutoCloseable {
 
 	private final Transaction db;
+	private final Cargo cargo;
+	private final History history;
 	private final Tracking tracking;
 
 	private Shipping(Transaction db) {
 		this.db = db;
 		Locations locations = new Locations(db);
 		Voyages voyages = new Voyages(db);
-		Cargo cargo = new Cargo(db);
-		History history = new History(db, cargo, locations, voyages);
 		Itinerary itinerary = new Itinerary(db);
 		Routing routing = new Routing(db, itinerary, voyages, locations);
+		this.cargo = new Cargo(db, itinerary, routing);
+		this.history = new History(db, cargo, locations, voyages);
 		this.tracking = new Tracking(cargo, history, itinerary, routing,
 				new Progress(db, history, itinerary, routing));
 	}
@@ -91,13 +91,13 @@ public final class Shipping implements AutoCloseable {
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			Instant completionTime, Instant registrationTime) {
 		checkVoyage(type, false);
-		return new Shipping(History.register(db, trackingId, type, location, none(), completionTime, registrationTime));
+		return new Shipping(History.land(db, trackingId, type, location, none(), completionTime, registrationTime));
 	}
 
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			String voyageNumber, Instant completionTime, Instant registrationTime) {
 		checkVoyage(type, true);
-		return new Shipping(History.register(db, trackingId, type, location, some(lval(voyageNumber)),
+		return new Shipping(History.land(db, trackingId, type, location, some(lval(voyageNumber)),
 				completionTime, registrationTime));
 	}
 
@@ -111,40 +111,28 @@ public final class Shipping implements AutoCloseable {
 		}
 	}
 
-	// -- the commands: denials first, then the aggregate's write -------------
+	// -- the commands: each the aggregate's own, refused there by name -------
 
-	/** Booking: the cargo exists, with its origin and its first requirement. */
+	/** BookingService.bookNewCargo. */
 	public Try<Shipping> bookCargo(String trackingId, String origin, String destination, Instant arrivalDeadline) {
-		return command(tracking.bookingDenials(trackingId, origin, destination),
-				() -> new Shipping(Cargo.book(db, trackingId, origin, destination, arrivalDeadline)));
+		return cargo.book(trackingId, origin, destination, arrivalDeadline).map(Shipping::new);
 	}
 
-	/** Cargo.specifyNewRoute: the current specification gives way to the one given. */
+	/** BookingService.changeDestination. */
 	public Try<Shipping> specifyNewRoute(String trackingId, String origin, String destination,
 			Instant arrivalDeadline) {
-		return command(tracking.reroutingDenials(trackingId, origin, destination),
-				() -> new Shipping(Cargo.specify(db, trackingId, tracking.routeSpecificationOf(trackingId),
-						new RouteSpecification(origin, destination, arrivalDeadline))));
+		return cargo.specify(trackingId, origin, destination, arrivalDeadline).map(Shipping::new);
 	}
 
-	/** Cargo.assignToRoute: the current itinerary gives way to the legs given. */
+	/** BookingService.assignCargoToRoute. */
 	public Try<Shipping> assignToRoute(String trackingId, List<Leg> legs) {
-		return command(tracking.routingDenials(trackingId, legs),
-				() -> new Shipping(Cargo.route(db, trackingId, tracking.itineraryOf(trackingId), legs)));
+		return cargo.route(trackingId, legs).map(Shipping::new);
 	}
 
-	/** Registering a handling: HandlingEventFactory's checks, then the fact. */
+	/** HandlingEventService.registerHandlingEvent. */
 	public Try<Shipping> registerHandling(String trackingId, HandlingType type, String location,
 			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
-		return command(tracking.registrationDenials(trackingId, type, location, voyageNumber),
-				() -> new Shipping(History.register(db, trackingId, type, location, LOption.of(voyageNumber),
-						completionTime, registrationTime)));
-	}
-
-	private static Try<Shipping> command(List<String> denials, Supplier<Shipping> effect) {
-		if (!denials.isEmpty()) {
-			return Try.failure(new IllegalStateException(String.join("; ", denials)));
-		}
-		return Try.success(effect.get());
+		return history.register(trackingId, type, location, voyageNumber, completionTime, registrationTime)
+				.map(Shipping::new);
 	}
 }

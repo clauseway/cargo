@@ -12,6 +12,11 @@ import java.util.Collections;
 import java.util.List;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.cargo.Itinerary;
+import org.clauseway.shipping.cargo.Routing;
+import org.clauseway.shipping.location.Locations;
+import org.clauseway.shipping.voyage.Voyages;
 import org.junit.Test;
 
 public class BookingTest {
@@ -106,6 +111,15 @@ public class BookingTest {
 		assertThat(open(store, "again").specifyNewRoute("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
 				.contains(new RouteSpecification(STOCKHOLM, MELBOURNE, hour(100)));
+	}
+
+	/** The root guards its own writes: booking a taken id is refused with no facade in between. */
+	@Test
+	public void theRootRefusesASecondBookingWithoutTheFacade() {
+		Transaction db = Transaction.recording(bookedStore().open("direct"));
+		Itinerary itinerary = new Itinerary(db);
+		Cargo cargo = new Cargo(db, itinerary, new Routing(db, itinerary, new Voyages(db), new Locations(db)));
+		assertThat(cargo.book("XYZ", HAMBURG, MELBOURNE, hour(100)).getCause()).hasMessage("already booked");
 	}
 
 	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
