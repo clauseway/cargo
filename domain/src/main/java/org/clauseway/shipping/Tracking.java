@@ -1,11 +1,8 @@
 package org.clauseway.shipping;
 
 // ABOUTME: The read face of the shipping domain — every derived fact as a Java
-// ABOUTME: value, one section per rule class: history, itinerary, routing, progress.
+// ABOUTME: value, one section per aggregate's rules: history, itinerary, routing, progress.
 
-import static org.clauseway.shipping.Schema.handlingEvent;
-import static org.clauseway.shipping.Schema.leg;
-import static org.clauseway.shipping.Schema.routeSpecification;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
@@ -15,10 +12,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.clauseway.shipping.rules.History;
-import org.clauseway.shipping.rules.Itinerary;
-import org.clauseway.shipping.rules.Progress;
-import org.clauseway.shipping.rules.Routing;
 import org.clauseway.functional.tuples.Tuple5;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
@@ -27,18 +20,22 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.cargo.Itinerary;
+import org.clauseway.shipping.cargo.Progress;
+import org.clauseway.shipping.cargo.Routing;
+import org.clauseway.shipping.handling.History;
 
 public final class Tracking {
 
-	private final Transaction db;
+	private final Cargo cargo;
 	private final History history;
 	private final Itinerary itinerary;
 	private final Routing routing;
 	private final Progress progress;
 
-	Tracking(Transaction db, History history, Itinerary itinerary, Routing routing, Progress progress) {
-		this.db = db;
+	Tracking(Cargo cargo, History history, Itinerary itinerary, Routing routing, Progress progress) {
+		this.cargo = cargo;
 		this.history = history;
 		this.itinerary = itinerary;
 		this.routing = routing;
@@ -50,7 +47,7 @@ public final class Tracking {
 	/** The cargo's handling events, distinct, in completion order. */
 	public List<HandlingEvent> handlingHistoryOf(String trackingId) {
 		EventColumns c = new EventColumns();
-		return c.events(c.select(handlingEvent(db, lval(trackingId), c.type, c.location, c.voyageNumber, c.completed, lvar())))
+		return c.events(c.select(history.event(lval(trackingId), c.type, c.location, c.voyageNumber, c.completed)))
 				.sorted(Comparator.comparing(HandlingEvent::getCompletionTime))
 				.collect(Collectors.toList());
 	}
@@ -93,7 +90,7 @@ public final class Tracking {
 	public List<Leg> itineraryOf(String trackingId) {
 		Unifiable<Integer> index = lvar();
 		LegColumns c = new LegColumns();
-		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
+		return c.legs(Query.of(cargo.itinerary(lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
 				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
 				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
 				.collect(Collectors.toList());
@@ -167,7 +164,7 @@ public final class Tracking {
 		Unifiable<String> origin = lvar();
 		Unifiable<String> destination = lvar();
 		Unifiable<Instant> deadline = lvar();
-		return Query.of(routeSpecification(db, lval(trackingId), origin, destination, deadline))
+		return Query.of(cargo.specification(lval(trackingId), origin, destination, deadline))
 				.select(origin, destination, deadline).rows()
 				.map(row -> new RouteSpecification(row.get(origin).get(), row.get(destination).get(),
 						row.get(deadline).get()))

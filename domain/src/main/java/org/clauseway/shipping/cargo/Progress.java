@@ -1,9 +1,9 @@
-package org.clauseway.shipping.rules;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: The delivery's progress read as rules — every field of dddsample's
 // ABOUTME: Delivery snapshot derived from the history, itinerary and routing.
 
-import static org.clauseway.shipping.Schema.routeSpecification;
+import static org.clauseway.shipping.cargo.Cargo.routeSpecification;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.structures.LOption.some;
@@ -15,6 +15,7 @@ import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.Notice;
 import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.shipping.TransportStatus;
+import org.clauseway.shipping.handling.History;
 import org.clauseway.logic.finitedomain.Ints;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;

@@ -1,9 +1,9 @@
-package org.clauseway.shipping.rules;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: The itinerary read as rules: its first and last legs by index, and
 // ABOUTME: the sequence of handlings it plans — which is what it accounts for.
 
-import static org.clauseway.shipping.Schema.leg;
+import static org.clauseway.shipping.cargo.Cargo.leg;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;

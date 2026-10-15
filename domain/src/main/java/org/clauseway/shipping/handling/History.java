@@ -1,35 +1,83 @@
-package org.clauseway.shipping.rules;
+package org.clauseway.shipping.handling;
 
-// ABOUTME: The handling history read as rules: whether the cargo was handled
-// ABOUTME: at all, and which handling was the most recently completed.
+// ABOUTME: The HandlingEvent aggregate: the handlings as reported, written here
+// ABOUTME: alone, and the history read as rules — each event, the last, what a registration violates.
 
-import static org.clauseway.shipping.Schema.cargo;
-import static org.clauseway.shipping.Schema.handlingEvent;
-import static org.clauseway.shipping.Schema.voyage;
 import static org.clauseway.logic.goals.Matche.loption;
 import static org.clauseway.logic.goals.Matche.matche;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
 import java.util.Arrays;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Schema;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.sql.Codec;
+import org.clauseway.pldb.sql.SerializableSource;
+import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.HandlingType;
+import org.clauseway.shipping.Schema;
+import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.location.Locations;
+import org.clauseway.shipping.voyage.Voyages;
 
 public final class History {
 
-	private final AnswerSource db;
+	private static final Codec<HandlingType> HANDLING_TYPE = Codec.of(HandlingType.class, String.class, Enum::name, HandlingType::valueOf);
+	private static final Codec<LOption<String>> OPTIONAL_VOYAGE = Codec.optional(String.class);
 
-	public History(AnswerSource db) {
+	private final AnswerSource db;
+	private final Cargo cargo;
+	private final Locations locations;
+	private final Voyages voyages;
+
+	public History(AnswerSource db, Cargo cargo, Locations locations, Voyages voyages) {
 		this.db = db;
+		this.cargo = cargo;
+		this.locations = locations;
+		this.voyages = voyages;
+	}
+
+	/**
+	 * A handling event as reported — what happened to the cargo, where, when
+	 * it happened and when the report arrived; the port-side kinds have no
+	 * voyage. A handling reported twice is two rows; every rule projects the
+	 * registration time away, so it is one event.
+	 */
+	static Literal handlingEvent(AnswerSource db, Unifiable<String> trackingId,
+			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber,
+			Unifiable<Instant> completionTime, Unifiable<Instant> registrationTime) {
+		return Literal.relation(History.class, "handlingEvent")
+				.arg("trackingId", trackingId).indexed()
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completionTime", completionTime)
+				.arg("registrationTime", registrationTime)
+				.from(db);
+	}
+
+	/** The aggregate on a SQL source: the handling kind by name, the absent voyage as NULL, the times as timestamps. */
+	public static SerializableSource onSql(SerializableSource source) {
+		return source.withCodec(handlingEvent(null, lvar(), HANDLING_TYPE.arg(), lvar(), OPTIONAL_VOYAGE.arg(),
+				Schema.INSTANT.arg(), Schema.INSTANT.arg()));
+	}
+
+	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
+	public Literal event(Unifiable<String> trackingId, Unifiable<HandlingType> type,
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
+		return Literal.relation(History.class, "event")
+				.arg("trackingId", trackingId)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completed", completed)
+				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, lvar()));
 	}
 
 	/** The cargo has been handled at all. */
@@ -78,16 +126,16 @@ public final class History {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("reason", reason)
-				.solving(exclude(cargo(db, trackingId, projected()))
+				.solving(exclude(cargo.known(trackingId))
 						.and(reason.unifies("unknown cargo"))
-						.or(exclude(Schema.location(db, location, projected()))
+						.or(exclude(locations.known(location))
 								.and(reason.unifies("unknown location")))
 						.or(matche(voyageNumber,
 								loption(() -> handlingKind(HANDLING_KINDS, type, lval(true))
 										.and(reason.unifies("voyage required"))),
 								loption(named -> handlingKind(HANDLING_KINDS, type, lval(false))
 										.and(reason.unifies("voyage prohibited"))
-										.or(exclude(voyage(db, named))
+										.or(exclude(voyages.known(named))
 												.and(reason.unifies("unknown voyage")))))));
 	}
 
@@ -102,5 +150,12 @@ public final class History {
 				.arg("completed", completed)
 				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, lvar())
 						.and(exclude(later(trackingId, completed))));
+	}
+
+	/** A handling registered: the fact lands, with the report's own time. */
+	public static Transaction register(Transaction db, String trackingId, HandlingType type, String location,
+			Unifiable<LOption<String>> voyageNumber, Instant completionTime, Instant registrationTime) {
+		return db.asserting(handlingEvent(db, lval(trackingId), lval(type), lval(location), voyageNumber,
+				lval(completionTime), lval(registrationTime)));
 	}
 }

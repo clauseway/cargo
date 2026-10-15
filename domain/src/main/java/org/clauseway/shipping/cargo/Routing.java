@@ -1,12 +1,8 @@
-package org.clauseway.shipping.rules;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: The route specification read as rules: whether the itinerary
 // ABOUTME: satisfies it, the routing status that follows, and the routes that would.
 
-import static org.clauseway.shipping.Schema.cargo;
-import static org.clauseway.shipping.Schema.location;
-import static org.clauseway.shipping.Schema.routeSpecification;
-import static org.clauseway.shipping.Schema.voyage;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Matche.loption;
 import static org.clauseway.logic.goals.Matche.matche;
@@ -17,9 +13,10 @@ import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
+import static org.clauseway.shipping.cargo.Cargo.cargo;
+import static org.clauseway.shipping.cargo.Cargo.routeSpecification;
 
 import java.time.Instant;
-import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple5;
@@ -30,17 +27,22 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.shipping.RoutingStatus;
+import org.clauseway.shipping.location.Locations;
+import org.clauseway.shipping.voyage.Voyages;
 
 public final class Routing {
 
 	private final AnswerSource db;
 	private final Itinerary itinerary;
 	private final Voyages voyages;
+	private final Locations locations;
 
-	public Routing(AnswerSource db, Itinerary itinerary, Voyages voyages) {
+	public Routing(AnswerSource db, Itinerary itinerary, Voyages voyages, Locations locations) {
 		this.db = db;
 		this.itinerary = itinerary;
 		this.voyages = voyages;
+		this.locations = locations;
 	}
 
 	/** The RouteSpecification constructor's guard, and the ports it is made from: known, and not one and the same. */
@@ -50,9 +52,9 @@ public final class Routing {
 				.arg("origin", origin)
 				.arg("destination", destination)
 				.arg("reason", reason)
-				.solving(exclude(location(db, origin, projected()))
+				.solving(exclude(locations.known(origin))
 						.and(reason.unifies("unknown origin"))
-						.or(exclude(location(db, destination, projected()))
+						.or(exclude(locations.known(destination))
 								.and(reason.unifies("unknown destination")))
 						.or(origin.unifies(destination)
 								.and(reason.unifies("origin and destination are the same"))));
@@ -88,11 +90,11 @@ public final class Routing {
 				.arg("loadLocation", loadLocation)
 				.arg("unloadLocation", unloadLocation)
 				.arg("reason", reason)
-				.solving(exclude(voyage(db, voyageNumber))
+				.solving(exclude(voyages.known(voyageNumber))
 						.and(reason.unifies("unknown voyage"))
-						.or(exclude(location(db, loadLocation, projected()))
+						.or(exclude(locations.known(loadLocation))
 								.and(reason.unifies("unknown load port")))
-						.or(exclude(location(db, unloadLocation, projected()))
+						.or(exclude(locations.known(unloadLocation))
 								.and(reason.unifies("unknown unload port"))));
 	}
 
