@@ -4,6 +4,7 @@ package org.clauseway.cargo;
 // ABOUTME: as relations and reads back whole, legs in itinerary order.
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.clauseway.cargo.Hours.hour;
 
 import java.util.Arrays;
@@ -58,5 +59,20 @@ public class ShippingTest {
 				new HandlingEvent(HandlingType.RECEIVE, "SESTO", Optional.empty(), hour(0)),
 				new HandlingEvent(HandlingType.LOAD, "SESTO", Optional.of("V100"), hour(1)));
 		assertThat(handled.tracking().handlingHistoryOf("XYZ")).isEmpty();
+	}
+
+	/** The HandlingEvent constructors' guard: a carrier-side kind names a voyage, a port-side kind never does. */
+	@Test
+	public void aLoadLandsOnlyWithAVoyage() {
+		assertThatThrownBy(() -> world().withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", hour(1), hour(1)))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("Voyage is required for event type LOAD");
+	}
+
+	@Test
+	public void aReceiptLandsOnlyWithoutAVoyage() {
+		assertThatThrownBy(() -> world().withHandlingEvent("ABC", HandlingType.RECEIVE, "SESTO", "V100", hour(1), hour(1)))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("Voyage is not allowed with event type RECEIVE");
 	}
 }

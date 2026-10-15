@@ -97,12 +97,24 @@ public final class Shipping implements AutoCloseable {
 
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			Instant completionTime, Instant registrationTime) {
+		checkVoyage(type, false);
 		return with(handling(trackingId, type, location, none(), completionTime, registrationTime));
 	}
 
 	public Shipping withHandlingEvent(String trackingId, HandlingType type, String location,
 			String voyageNumber, Instant completionTime, Instant registrationTime) {
+		checkVoyage(type, true);
 		return with(handling(trackingId, type, location, some(lval(voyageNumber)), completionTime, registrationTime));
+	}
+
+	/** The HandlingEvent constructors' guard: a carrier-side kind names a voyage, a port-side kind never does. */
+	private static void checkVoyage(HandlingType type, boolean named) {
+		if (type.requiresVoyage() && !named) {
+			throw new IllegalArgumentException("Voyage is required for event type " + type);
+		}
+		if (!type.requiresVoyage() && named) {
+			throw new IllegalArgumentException("Voyage is not allowed with event type " + type);
+		}
 	}
 
 	// -- the commands: denials first, then the facts -----------------------
