@@ -33,7 +33,7 @@ public class InspectionTest {
 				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
 						new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-						new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4))));
+						new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
 	@Test

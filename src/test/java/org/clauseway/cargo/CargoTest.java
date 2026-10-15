@@ -48,7 +48,7 @@ public class CargoTest {
 				.bookCargo("CARGO1", origin, destination, hour(100)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
 						new Leg(VOYAGE, origin, midpoint, hour(1), hour(2)),
-						new Leg(VOYAGE, midpoint, destination, hour(3), hour(4))));
+						new Leg(VOYAGE, midpoint, destination, hour(3), hour(4)))).get();
 	}
 
 	private static Shipping handled(Shipping s, String trackingId, int hour, HandlingType type, String location) {

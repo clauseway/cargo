@@ -35,7 +35,7 @@ public class RouteSpecificationTest {
 				.bookCargo("ABC", origin, destination, deadline).get()
 				.assignToRoute("ABC", Arrays.asList(
 						new Leg("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
-						new Leg("V002", NEWYORK, CHICAGO, hour(12), hour(20))));
+						new Leg("V002", NEWYORK, CHICAGO, hour(12), hour(20)))).get();
 	}
 
 	@Test

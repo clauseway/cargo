@@ -44,7 +44,7 @@ public class ShippingTest {
 	public void legsReadBackInItineraryOrder() {
 		Shipping routed = world()
 				.bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get()
-				.assignToRoute("ABC", Arrays.asList(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG));
+				.assignToRoute("ABC", Arrays.asList(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG)).get();
 		assertThat(routed.tracking().itineraryOf("ABC")).containsExactly(STOCKHOLM_HELSINKI, HELSINKI_HAMBURG);
 	}
 

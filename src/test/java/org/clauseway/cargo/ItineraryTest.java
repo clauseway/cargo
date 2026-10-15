@@ -41,7 +41,7 @@ public class ItineraryTest {
 	private static Shipping routed() {
 		return booked().assignToRoute("CARGO1", Arrays.asList(
 				new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-				new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4))));
+				new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
 	private static HandlingEvent event(HandlingType type, String location) {

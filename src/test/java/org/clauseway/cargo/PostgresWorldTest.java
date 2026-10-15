@@ -125,7 +125,7 @@ public class PostgresWorldTest {
 		Shipping routing = open("route");
 		List<List<Leg>> candidates = routing.tracking().routeCandidatesOf("CARGO1");
 		assertThat(candidates).hasSize(1);
-		assertThat(routing.assignToRoute("CARGO1", candidates.get(0)).commit().isSuccess()).isTrue();
+		assertThat(routing.assignToRoute("CARGO1", candidates.get(0)).get().commit().isSuccess()).isTrue();
 		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.ROUTED);
 
 		assertThat(open("handle")
@@ -179,7 +179,7 @@ public class PostgresWorldTest {
 		seed();
 		Shipping routing = open("route");
 		List<Leg> chosen = routing.tracking().routeCandidatesOf("CARGO1").get(0);
-		Shipping routed = routing.assignToRoute("CARGO1", chosen);
+		Shipping routed = routing.assignToRoute("CARGO1", chosen).get();
 
 		assertThat(open("reroute").specifyNewRoute("CARGO1", SHANGHAI, ROTTERDAM, hour(5)).get()
 				.commit().isSuccess()).isTrue();

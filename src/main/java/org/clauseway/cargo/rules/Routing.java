@@ -70,6 +70,15 @@ public final class Routing {
 						.or(specificationDenial(origin, destination, reason)));
 	}
 
+	/** Cargo.assignToRoute's denial: the cargo must exist. */
+	public Literal routingDenial(Unifiable<String> trackingId, Unifiable<String> reason) {
+		return Literal.relation(Routing.class, "routingDenial")
+				.arg("trackingId", trackingId)
+				.arg("reason", reason)
+				.solving(exclude(cargo(db, trackingId, projected()))
+						.and(reason.unifies("unknown cargo")));
+	}
+
 	/** Cargo.specifyNewRoute's denials: the cargo must exist, and the specification must hold up. */
 	public Literal reroutingDenial(Unifiable<String> trackingId, Unifiable<String> origin,
 			Unifiable<String> destination, Unifiable<String> reason) {
@@ -78,8 +87,7 @@ public final class Routing {
 				.arg("origin", origin)
 				.arg("destination", destination)
 				.arg("reason", reason)
-				.solving(exclude(cargo(db, trackingId, projected()))
-						.and(reason.unifies("unknown cargo"))
+				.solving(routingDenial(trackingId, reason)
 						.or(specificationDenial(origin, destination, reason)));
 	}
 

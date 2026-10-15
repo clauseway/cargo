@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.clauseway.cargo.Hours.hour;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.junit.Test;
@@ -58,6 +60,22 @@ public class BookingTest {
 		assertThat(s.tracking().reroutingDenials("XYZ", STOCKHOLM, "ZZZZZ")).containsExactly("unknown destination");
 	}
 
+	/** Itinerary's constructor: an itinerary has at least one leg. */
+	@Test
+	public void anItineraryHasAtLeastOneLeg() {
+		Shipping s = open(bookedStore(), "route");
+		assertThat(s.assignToRoute("XYZ", Collections.emptyList()).isFailure()).isTrue();
+		assertThat(s.tracking().routingDenials("XYZ", Collections.emptyList())).containsExactly("empty itinerary");
+	}
+
+	@Test
+	public void onlyABookedCargoCanBeRouted() {
+		List<Leg> legs = Arrays.asList(new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
+		Shipping s = open(bookedStore(), "route");
+		assertThat(s.assignToRoute("NOEXIST", legs).isFailure()).isTrue();
+		assertThat(s.tracking().routingDenials("NOEXIST", legs)).containsExactly("unknown cargo");
+	}
+
 	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
 	@Test
 	public void aTrackingIdIsBookedOnce() {
@@ -79,7 +97,7 @@ public class BookingTest {
 		assertThat(open(store, "route")
 				.assignToRoute("XYZ", Arrays.asList(
 						new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
-						new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4))))
+						new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get()
 				.commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(RoutingStatus.ROUTED);
 

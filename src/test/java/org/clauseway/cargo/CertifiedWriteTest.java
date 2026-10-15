@@ -50,7 +50,7 @@ public class CertifiedWriteTest {
 		SharedDatabase store = bookedStore();
 		Shipping routing = open(store, "route");
 		List<Leg> chosen = routing.tracking().routeCandidatesOf("XYZ").get(0);
-		Shipping routed = routing.assignToRoute("XYZ", chosen);
+		Shipping routed = routing.assignToRoute("XYZ", chosen).get();
 
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
@@ -71,7 +71,7 @@ public class CertifiedWriteTest {
 		SharedDatabase store = bookedStore();
 		Shipping routed = open(store, "route").assignToRoute("XYZ", Arrays.asList(
 				new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
-				new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4))));
+				new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get();
 
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
@@ -119,12 +119,12 @@ public class CertifiedWriteTest {
 		List<Leg> chosen = stale.tracking().routeCandidatesOf("XYZ").get(0);
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
-		assertThat(stale.assignToRoute("XYZ", chosen).commit().isFailure()).isTrue();
+		assertThat(stale.assignToRoute("XYZ", chosen).get().commit().isFailure()).isTrue();
 
 		Shipping fresh = open(store, "again");
 		List<Leg> rechosen = fresh.tracking().routeCandidatesOf("XYZ").get(0);
 		assertThat(rechosen).containsExactly(new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
-		assertThat(fresh.assignToRoute("XYZ", rechosen).commit().isSuccess()).isTrue();
+		assertThat(fresh.assignToRoute("XYZ", rechosen).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(ROUTED);
 	}
 }

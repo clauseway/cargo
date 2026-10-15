@@ -128,9 +128,11 @@ public final class Shipping implements AutoCloseable {
 	}
 
 	/** The itinerary is a value: the old legs go whole, the new ones land in order. */
-	public Shipping assignToRoute(String trackingId, List<Leg> legs) {
-		List<Literal> spent = legLiterals(trackingId, tracking.itineraryOf(trackingId));
-		return new Shipping(db.retracting(spent).asserting(legLiterals(trackingId, legs)));
+	public Try<Shipping> assignToRoute(String trackingId, List<Leg> legs) {
+		return command(tracking.routingDenials(trackingId, legs), () -> {
+			List<Literal> spent = legLiterals(trackingId, tracking.itineraryOf(trackingId));
+			return new Shipping(db.retracting(spent).asserting(legLiterals(trackingId, legs)));
+		});
 	}
 
 	/** Registering a handling: HandlingEventFactory's checks, then the fact. */

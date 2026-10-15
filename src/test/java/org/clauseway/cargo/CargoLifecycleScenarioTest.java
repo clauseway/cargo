@@ -124,7 +124,7 @@ public class CargoLifecycleScenarioTest {
 		commit(s -> s.assignToRoute(TRACKING_ID, Arrays.asList(
 				new Leg(V100, HONGKONG, NEWYORK, day("2009-03-03"), day("2009-03-09")),
 				new Leg(V200, NEWYORK, CHICAGO, day("2009-03-10"), day("2009-03-14")),
-				new Leg(V200, CHICAGO, STOCKHOLM, day("2009-03-07"), day("2009-03-11")))));
+				new Leg(V200, CHICAGO, STOCKHOLM, day("2009-03-07"), day("2009-03-11")))).get());
 
 		assertThat(delivery().getTransportStatus()).isEqualTo(NOT_RECEIVED);
 		assertThat(delivery().getRoutingStatus()).isEqualTo(ROUTED);
@@ -175,7 +175,7 @@ public class CargoLifecycleScenarioTest {
 		// Assign the stub's route from Tokyo
 		commit(s -> s.assignToRoute(TRACKING_ID, Arrays.asList(
 				new Leg(V300, TOKYO, HAMBURG, day("2009-03-08"), day("2009-03-12")),
-				new Leg(V400, HAMBURG, STOCKHOLM, day("2009-03-14"), day("2009-03-15")))));
+				new Leg(V400, HAMBURG, STOCKHOLM, day("2009-03-14"), day("2009-03-15")))).get());
 
 		assertThat(delivery().getRoutingStatus()).isEqualTo(ROUTED);
 
