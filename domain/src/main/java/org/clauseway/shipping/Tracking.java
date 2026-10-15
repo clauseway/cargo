@@ -59,12 +59,6 @@ public final class Tracking {
 				.findFirst();
 	}
 
-	/** Every rule the registration would violate, by name; empty means allowed. */
-	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
-			Optional<String> voyageNumber) {
-		return history.registrationDenials(trackingId, type, location, voyageNumber);
-	}
-
 	/** The variables of one event's columns and the row-to-value reading over them. */
 	private static final class EventColumns {
 		final Unifiable<HandlingType> type = lvar();
@@ -150,21 +144,6 @@ public final class Tracking {
 						.map(leg -> new Leg(leg._1.get(), leg._2.get(), leg._3.get(), leg._4.get(), leg._5.get()))
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-	}
-
-	/** Every rule the booking would violate, by name; empty means allowed. */
-	public List<String> bookingDenials(String trackingId, String origin, String destination) {
-		return cargo.bookingDenials(trackingId, origin, destination);
-	}
-
-	/** Every rule the route assignment would violate, by name; empty means allowed. */
-	public List<String> routingDenials(String trackingId, List<Leg> legs) {
-		return cargo.routingDenials(trackingId, legs);
-	}
-
-	/** Every rule the re-specification would violate, by name; empty means allowed. */
-	public List<String> reroutingDenials(String trackingId, String origin, String destination) {
-		return cargo.reroutingDenials(trackingId, origin, destination);
 	}
 
 	// -- progress: the delivery and the inspection ----------------------------

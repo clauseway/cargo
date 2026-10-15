@@ -172,15 +172,15 @@ public final class Cargo {
 
 	// -- the denials, by name; empty means allowed ---------------------------
 
-	public List<String> bookingDenials(String trackingId, String origin, String destination) {
+	private List<String> bookingDenials(String trackingId, String origin, String destination) {
 		return reasons(reason -> routing.bookingDenial(lval(trackingId), lval(origin), lval(destination), reason));
 	}
 
-	public List<String> reroutingDenials(String trackingId, String origin, String destination) {
+	private List<String> reroutingDenials(String trackingId, String origin, String destination) {
 		return reasons(reason -> routing.reroutingDenial(lval(trackingId), lval(origin), lval(destination), reason));
 	}
 
-	public List<String> routingDenials(String trackingId, List<Leg> legs) {
+	private List<String> routingDenials(String trackingId, List<Leg> legs) {
 		Stream<String> booked = reasons(reason -> routing.routingDenial(lval(trackingId), reason)).stream();
 		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
 		Stream<String> parts = legs.stream().flatMap(leg -> reasons(reason -> routing.legDenial(

@@ -6,6 +6,7 @@ package org.clauseway.shipping;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.clauseway.shipping.Hours.hour;
+import static org.clauseway.shipping.Refused.denials;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,8 +45,7 @@ public class BookingTest {
 	@Test
 	public void originAndDestinationCannotBeTheSame() {
 		Shipping s = SampleLocations.declaredIn(Shipping.empty());
-		assertThat(s.bookCargo("XYZ", STOCKHOLM, STOCKHOLM, hour(100)).isFailure()).isTrue();
-		assertThat(s.tracking().bookingDenials("XYZ", STOCKHOLM, STOCKHOLM))
+		assertThat(denials(s.bookCargo("XYZ", STOCKHOLM, STOCKHOLM, hour(100))))
 				.containsExactly("origin and destination are the same");
 	}
 
@@ -53,32 +53,28 @@ public class BookingTest {
 	@Test
 	public void bookingNeedsKnownPorts() {
 		Shipping s = SampleLocations.declaredIn(Shipping.empty());
-		assertThat(s.bookCargo("XYZ", "ZZZZZ", MELBOURNE, hour(100)).isFailure()).isTrue();
-		assertThat(s.tracking().bookingDenials("XYZ", "ZZZZZ", "YYYYY"))
+		assertThat(denials(s.bookCargo("XYZ", "ZZZZZ", "YYYYY", hour(100))))
 				.containsExactlyInAnyOrder("unknown origin", "unknown destination");
 	}
 
 	@Test
 	public void reroutingNeedsKnownPorts() {
 		Shipping s = open(bookedStore(), "reroute");
-		assertThat(s.specifyNewRoute("XYZ", STOCKHOLM, "ZZZZZ", hour(50)).isFailure()).isTrue();
-		assertThat(s.tracking().reroutingDenials("XYZ", STOCKHOLM, "ZZZZZ")).containsExactly("unknown destination");
+		assertThat(denials(s.specifyNewRoute("XYZ", STOCKHOLM, "ZZZZZ", hour(50)))).containsExactly("unknown destination");
 	}
 
 	/** Itinerary's constructor: an itinerary has at least one leg. */
 	@Test
 	public void anItineraryHasAtLeastOneLeg() {
 		Shipping s = open(bookedStore(), "route");
-		assertThat(s.assignToRoute("XYZ", Collections.emptyList()).isFailure()).isTrue();
-		assertThat(s.tracking().routingDenials("XYZ", Collections.emptyList())).containsExactly("empty itinerary");
+		assertThat(denials(s.assignToRoute("XYZ", Collections.emptyList()))).containsExactly("empty itinerary");
 	}
 
 	@Test
 	public void onlyABookedCargoCanBeRouted() {
 		List<Leg> legs = Arrays.asList(new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
 		Shipping s = open(bookedStore(), "route");
-		assertThat(s.assignToRoute("NOEXIST", legs).isFailure()).isTrue();
-		assertThat(s.tracking().routingDenials("NOEXIST", legs)).containsExactly("unknown cargo");
+		assertThat(denials(s.assignToRoute("NOEXIST", legs))).containsExactly("unknown cargo");
 	}
 
 	/** A leg is made of a Voyage and two Locations; none of them can be made from a number or a code nothing is known by. */
@@ -88,8 +84,7 @@ public class BookingTest {
 				new Leg("NOPE", STOCKHOLM, "ZZZZZ", hour(1), hour(2)),
 				new Leg("0123", "YYYYY", HAMBURG, hour(3), hour(4)));
 		Shipping s = open(bookedStore(), "route");
-		assertThat(s.assignToRoute("XYZ", legs).isFailure()).isTrue();
-		assertThat(s.tracking().routingDenials("XYZ", legs))
+		assertThat(denials(s.assignToRoute("XYZ", legs)))
 				.containsExactlyInAnyOrder("unknown voyage", "unknown unload port", "unknown load port");
 	}
 
@@ -126,8 +121,7 @@ public class BookingTest {
 	@Test
 	public void aTrackingIdIsBookedOnce() {
 		Shipping s = open(bookedStore(), "again");
-		assertThat(s.bookCargo("XYZ", HAMBURG, MELBOURNE, hour(100)).isFailure()).isTrue();
-		assertThat(s.tracking().bookingDenials("XYZ", HAMBURG, MELBOURNE)).containsExactly("already booked");
+		assertThat(denials(s.bookCargo("XYZ", HAMBURG, MELBOURNE, hour(100)))).containsExactly("already booked");
 	}
 
 	@Test

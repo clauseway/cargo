@@ -160,7 +160,7 @@ public final class History {
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */
-	public List<String> registrationDenials(String trackingId, HandlingType type, String location,
+	private List<String> registrationDenials(String trackingId, HandlingType type, String location,
 			Optional<String> voyageNumber) {
 		Unifiable<String> reason = lvar();
 		return Query.of(registrationDenial(lval(trackingId), lval(type), lval(location), LOption.of(voyageNumber), reason))

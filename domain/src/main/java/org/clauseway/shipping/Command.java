@@ -13,10 +13,10 @@ import org.clauseway.vavr.control.Try;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Command {
 
-	/** The effect when nothing denies it; otherwise the denials, joined, as the failure. */
+	/** The effect when nothing denies it; otherwise the refusal naming the denials. */
 	public static Try<Transaction> guarded(List<String> denials, Supplier<Transaction> effect) {
 		if (!denials.isEmpty()) {
-			return Try.failure(new IllegalStateException(String.join("; ", denials)));
+			return Try.failure(new Refusal(denials));
 		}
 		return Try.success(effect.get());
 	}
