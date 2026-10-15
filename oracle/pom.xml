@@ -6,8 +6,8 @@
 
     <!-- The oracle: dddsample-core's domain model (citerus, MIT, commit d8b8962,
          vendored under src/main/java/se/citerus) driven beside the cargo facade
-         on the same inputs, every delivery field compared. Needs Java 17; the
-         cargo artifact must be installed first. -->
+         on the same inputs, every delivery field compared. Built with the
+         domain module from the reactor at the root. -->
     <groupId>org.clauseway</groupId>
     <artifactId>cargo-oracle</artifactId>
     <version>0.1.0-SNAPSHOT</version>
