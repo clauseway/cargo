@@ -6,6 +6,7 @@ package org.clauseway.cargo.rules;
 import static org.clauseway.cargo.Schema.cargo;
 import static org.clauseway.cargo.Schema.location;
 import static org.clauseway.cargo.Schema.routeSpecification;
+import static org.clauseway.cargo.Schema.voyage;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Matche.loption;
 import static org.clauseway.logic.goals.Matche.matche;
@@ -77,6 +78,22 @@ public final class Routing {
 				.arg("reason", reason)
 				.solving(exclude(cargo(db, trackingId, projected()))
 						.and(reason.unifies("unknown cargo")));
+	}
+
+	/** The Leg constructor's parts: a voyage and two ports, each known. */
+	public Literal legDenial(Unifiable<String> voyageNumber, Unifiable<String> loadLocation,
+			Unifiable<String> unloadLocation, Unifiable<String> reason) {
+		return Literal.relation(Routing.class, "legDenial")
+				.arg("voyageNumber", voyageNumber)
+				.arg("loadLocation", loadLocation)
+				.arg("unloadLocation", unloadLocation)
+				.arg("reason", reason)
+				.solving(exclude(voyage(db, voyageNumber))
+						.and(reason.unifies("unknown voyage"))
+						.or(exclude(location(db, loadLocation, projected()))
+								.and(reason.unifies("unknown load port")))
+						.or(exclude(location(db, unloadLocation, projected()))
+								.and(reason.unifies("unknown unload port"))));
 	}
 
 	/** Cargo.specifyNewRoute's denials: the cargo must exist, and the specification must hold up. */

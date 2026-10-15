@@ -76,6 +76,18 @@ public class BookingTest {
 		assertThat(s.tracking().routingDenials("NOEXIST", legs)).containsExactly("unknown cargo");
 	}
 
+	/** A leg is made of a Voyage and two Locations; none of them can be made from a number or a code nothing is known by. */
+	@Test
+	public void aLegNamesAKnownVoyageAndKnownPorts() {
+		List<Leg> legs = Arrays.asList(
+				new Leg("NOPE", STOCKHOLM, "ZZZZZ", hour(1), hour(2)),
+				new Leg("0123", "YYYYY", HAMBURG, hour(3), hour(4)));
+		Shipping s = open(bookedStore(), "route");
+		assertThat(s.assignToRoute("XYZ", legs).isFailure()).isTrue();
+		assertThat(s.tracking().routingDenials("XYZ", legs))
+				.containsExactlyInAnyOrder("unknown voyage", "unknown unload port", "unknown load port");
+	}
+
 	/** CargoFactory asks the repository for a fresh tracking id; here the id is given, so a second booking of it is refused. */
 	@Test
 	public void aTrackingIdIsBookedOnce() {

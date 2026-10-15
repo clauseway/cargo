@@ -201,9 +201,11 @@ public final class Tracking {
 	/** Every rule the route assignment would violate, by name; empty means allowed. */
 	public List<String> routingDenials(String trackingId, List<Leg> legs) {
 		Unifiable<String> reason = lvar();
-		Stream<String> rules = Query.of(routing.routingDenial(lval(trackingId), reason)).solve(reason).map(Reified::get);
+		Stream<String> cargo = Query.of(routing.routingDenial(lval(trackingId), reason)).solve(reason).map(Reified::get);
 		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
-		return Stream.concat(rules, shape).collect(Collectors.toList());
+		Stream<String> parts = legs.stream().flatMap(leg -> Query.of(routing.legDenial(lval(leg.getVoyageNumber()),
+				lval(leg.getLoadLocation()), lval(leg.getUnloadLocation()), reason)).solve(reason).map(Reified::get));
+		return Stream.concat(cargo, Stream.concat(shape, parts)).distinct().collect(Collectors.toList());
 	}
 
 	/** Every rule the re-specification would violate, by name; empty means allowed. */
