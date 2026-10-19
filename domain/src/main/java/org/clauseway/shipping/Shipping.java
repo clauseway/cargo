@@ -9,7 +9,6 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import org.clauseway.functional.Nothing;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
@@ -121,10 +120,17 @@ public final class Shipping implements AutoCloseable {
 		return cargo.route(trackingId, legs).map(Shipping::new);
 	}
 
-	/** HandlingEventService.registerHandlingEvent. */
+	/** HandlingEventService.registerHandlingEvent, a carrier-side handling aboard the voyage. */
 	public Try<Shipping> registerHandling(String trackingId, HandlingType type, String location,
-			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
+			String voyageNumber, Instant completionTime, Instant registrationTime) {
 		return history.register(trackingId, type, location, voyageNumber, completionTime, registrationTime)
+				.map(Shipping::new);
+	}
+
+	/** HandlingEventService.registerHandlingEvent, a port-side handling with no voyage. */
+	public Try<Shipping> registerHandling(String trackingId, HandlingType type, String location,
+			Instant completionTime, Instant registrationTime) {
+		return history.register(trackingId, type, location, completionTime, registrationTime)
 				.map(Shipping::new);
 	}
 

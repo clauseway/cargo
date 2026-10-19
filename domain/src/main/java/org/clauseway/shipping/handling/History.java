@@ -6,13 +6,14 @@ package org.clauseway.shipping.handling;
 import static org.clauseway.logic.goals.Matche.loption;
 import static org.clauseway.logic.goals.Matche.matche;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.structures.LOption.none;
+import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.solving.Query;
@@ -149,17 +150,28 @@ public final class History {
 
 	/** Every rule the registration would violate, by name; empty means allowed. */
 	private List<String> registrationDenials(String trackingId, HandlingType type, String location,
-			Optional<String> voyageNumber) {
+			Unifiable<LOption<String>> voyageNumber) {
 		Unifiable<String> reason = lvar();
-		return Query.of(registrationDenial(lval(trackingId), lval(type), lval(location), LOption.of(voyageNumber), reason))
+		return Query.of(registrationDenial(lval(trackingId), lval(type), lval(location), voyageNumber, reason))
 				.solve(reason).map(Reified::get).collect(Collectors.toList());
 	}
 
-	/** HandlingEventService.register: the factory's checks, then the fact. */
+	/** HandlingEventService.register for a carrier-side handling, aboard the voyage: the factory's checks, then the fact. */
 	public Try<Transaction> register(String trackingId, HandlingType type, String location,
-			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
+			String voyageNumber, Instant completionTime, Instant registrationTime) {
+		return register(trackingId, type, location, some(lval(voyageNumber)), completionTime, registrationTime);
+	}
+
+	/** HandlingEventService.register for a port-side handling, with no voyage: the factory's checks, then the fact. */
+	public Try<Transaction> register(String trackingId, HandlingType type, String location,
+			Instant completionTime, Instant registrationTime) {
+		return register(trackingId, type, location, none(), completionTime, registrationTime);
+	}
+
+	private Try<Transaction> register(String trackingId, HandlingType type, String location,
+			Unifiable<LOption<String>> voyageNumber, Instant completionTime, Instant registrationTime) {
 		return Command.guarded(registrationDenials(trackingId, type, location, voyageNumber),
-				() -> land(db, trackingId, type, location, LOption.of(voyageNumber), completionTime, registrationTime));
+				() -> land(db, trackingId, type, location, voyageNumber, completionTime, registrationTime));
 	}
 
 	/** A handling as reported, landed as given: the fact door, unchecked. */

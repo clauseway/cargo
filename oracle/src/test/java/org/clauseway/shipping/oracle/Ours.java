@@ -74,7 +74,9 @@ final class Ours {
 	/** HandlingEventService registers the event; CargoInspectionService, in its own transaction, shows it to the cargo. */
 	void handle(String trackingId, HandlingType type, String location, Optional<String> voyageNumber,
 			Instant completion, Instant registration) {
-		commit(s -> s.registerHandling(trackingId, type, location, voyageNumber, completion, registration));
+		commit(s -> voyageNumber
+				.map(voyage -> s.registerHandling(trackingId, type, location, voyage, completion, registration))
+				.orElseGet(() -> s.registerHandling(trackingId, type, location, completion, registration)));
 		commit(s -> s.inspectCargo(trackingId));
 	}
 

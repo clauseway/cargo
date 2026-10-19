@@ -138,9 +138,9 @@ public class PostgresWorldTest {
 		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.ROUTED);
 
 		assertThat(open("handle")
-				.registerHandling("CARGO1", RECEIVE, SHANGHAI, Optional.empty(), hour(0), hour(0)).get()
-				.registerHandling("CARGO1", LOAD, SHANGHAI, Optional.of(VOYAGE), hour(1), hour(1)).get()
-				.registerHandling("CARGO1", UNLOAD, GOTHENBURG, Optional.of(VOYAGE), hour(4), hour(4)).get()
+				.registerHandling("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0)).get()
+				.registerHandling("CARGO1", LOAD, SHANGHAI, VOYAGE, hour(1), hour(1)).get()
+				.registerHandling("CARGO1", UNLOAD, GOTHENBURG, VOYAGE, hour(4), hour(4)).get()
 				.commit().isSuccess()).isTrue();
 
 		assertThat(open("inspect").inspectCargo("CARGO1").get().commit().isSuccess()).isTrue();
@@ -153,7 +153,7 @@ public class PostgresWorldTest {
 		assertThat(arrived.tracking().noticesOf("CARGO1")).containsExactly(Notice.ARRIVED);
 
 		assertThat(open("misdirect")
-				.registerHandling("CARGO1", LOAD, GOTHENBURG, Optional.of(WRONG_VOYAGE), hour(5), hour(5))
+				.registerHandling("CARGO1", LOAD, GOTHENBURG, WRONG_VOYAGE, hour(5), hour(5))
 				.get().commit().isSuccess()).isTrue();
 		assertThat(open("inspect-again").inspectCargo("CARGO1").get().commit().isSuccess()).isTrue();
 		Shipping astray = open("astray");
