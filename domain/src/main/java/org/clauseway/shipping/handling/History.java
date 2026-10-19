@@ -22,11 +22,9 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Schema;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
@@ -63,12 +61,6 @@ public final class History {
 				.arg("completionTime", completionTime)
 				.arg("registrationTime", registrationTime)
 				.from(db);
-	}
-
-	/** The aggregate on a SQL source: the handling kind by name, the absent voyage as NULL, the times as timestamps. */
-	public static SerializableSource onSql(SerializableSource source) {
-		return source.withCodec(handlingEvent(null, lvar(), Schema.HANDLING_TYPE.arg(), lvar(), Schema.OPTIONAL_STRING.arg(),
-				Schema.INSTANT.arg(), Schema.INSTANT.arg()));
 	}
 
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */

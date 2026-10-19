@@ -22,13 +22,11 @@ import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.RouteSpecification;
-import org.clauseway.shipping.Schema;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
@@ -85,13 +83,6 @@ public final class Cargo {
 				.from(db);
 	}
 
-	/** The aggregate on a SQL source: the deadline and the legs' times as timestamps, and the delivery's encodings. */
-	public static SerializableSource onSql(SerializableSource source) {
-		return Delivery.onSql(source
-				.withCodec(routeSpecification(null, lvar(), lvar(), lvar(), Schema.INSTANT.arg()))
-				.withCodec(leg(null, lvar(), lvar(), lvar(), lvar(), lvar(), Schema.INSTANT.arg(), Schema.INSTANT.arg())));
-	}
-
 	// -- the read face: what other aggregates and the tracking may see ------
 
 	/** The cargo is booked. */
@@ -101,39 +92,13 @@ public final class Cargo {
 				.solving(cargo(db, trackingId, lvar()));
 	}
 
-	/** The cargo's current route specification. */
-	public Literal specification(Unifiable<String> trackingId, Unifiable<String> origin,
-			Unifiable<String> destination, Unifiable<Instant> arrivalDeadline) {
-		return Literal.relation(Cargo.class, "specification")
-				.arg("trackingId", trackingId)
-				.arg("origin", origin)
-				.arg("destination", destination)
-				.arg("arrivalDeadline", arrivalDeadline)
-				.solving(routeSpecification(db, trackingId, origin, destination, arrivalDeadline));
-	}
-
-	/** The cargo's itinerary, leg by leg, each with its index. */
-	public Literal itinerary(Unifiable<String> trackingId, Unifiable<Integer> index,
-			Unifiable<String> voyageNumber, Unifiable<String> loadLocation, Unifiable<String> unloadLocation,
-			Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
-		return Literal.relation(Cargo.class, "itinerary")
-				.arg("trackingId", trackingId)
-				.arg("index", index)
-				.arg("voyageNumber", voyageNumber)
-				.arg("loadLocation", loadLocation)
-				.arg("unloadLocation", unloadLocation)
-				.arg("loadTime", loadTime)
-				.arg("unloadTime", unloadTime)
-				.solving(leg(db, trackingId, index, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime));
-	}
-
 	// -- the parts, as values ----------------------------------------------
 
 	public Optional<RouteSpecification> routeSpecificationOf(String trackingId) {
 		Unifiable<String> origin = lvar();
 		Unifiable<String> destination = lvar();
 		Unifiable<Instant> deadline = lvar();
-		return Query.of(specification(lval(trackingId), origin, destination, deadline))
+		return Query.of(routeSpecification(db, lval(trackingId), origin, destination, deadline))
 				.select(origin, destination, deadline).rows()
 				.map(row -> new RouteSpecification(row.get(origin).get(), row.get(destination).get(),
 						row.get(deadline).get()))
@@ -144,7 +109,7 @@ public final class Cargo {
 	public List<Leg> itineraryOf(String trackingId) {
 		Unifiable<Integer> index = lvar();
 		LegColumns c = new LegColumns();
-		return c.legs(Query.of(itinerary(lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
+		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
 				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
 				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
 				.collect(Collectors.toList());
@@ -243,10 +208,16 @@ public final class Cargo {
 	}
 
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
-	public Try<Transaction> inspect(String trackingId, Optional<HandlingEvent> latest) {
+	public Try<Transaction> inspect(String trackingId, HandlingEvent latest) {
 		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
 				.retracting(delivery.lastHandlingRows(trackingId))
-				.asserting(rows(latest.map(event -> Delivery.shown(db, trackingId, event))))));
+				.asserting(Delivery.shown(db, trackingId, latest))));
+	}
+
+	/** The inspection of a cargo the handling side has nothing for: it keeps no handling and re-derives its delivery. */
+	public Try<Transaction> inspect(String trackingId) {
+		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
+				.retracting(delivery.lastHandlingRows(trackingId))));
 	}
 
 	/**

@@ -19,6 +19,8 @@ import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.logic.finitedomain.Ints;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.solving.Answer;
+import org.clauseway.logic.solving.Query;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -26,12 +28,12 @@ import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Question;
 import org.clauseway.pldb.relations.Relation;
-import org.clauseway.pldb.sql.SerializableSource;
+import org.clauseway.shipping.DeliveryDTO;
+import org.clauseway.shipping.HandlingActivity;
 import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.Notice;
 import org.clauseway.shipping.RoutingStatus;
-import org.clauseway.shipping.Schema;
 import org.clauseway.shipping.TransportStatus;
 
 public final class Delivery {
@@ -81,37 +83,15 @@ public final class Delivery {
 				.from(db);
 	}
 
-	/** The stored state on a SQL source: the kinds and statuses by name, the absent fields as NULL, the times as timestamps. */
-	static SerializableSource onSql(SerializableSource source) {
-		return source
-				.withCodec(lastHandling(null, lvar(), Schema.HANDLING_TYPE.arg(), lvar(), Schema.OPTIONAL_STRING.arg(),
-						Schema.INSTANT.arg()))
-				.withCodec(delivery(null, lvar(), Schema.ROUTING_STATUS.arg(), Schema.TRANSPORT_STATUS.arg(),
-						Schema.OPTIONAL_STRING.arg(), Schema.OPTIONAL_STRING.arg(), lvar(), Schema.OPTIONAL_INSTANT.arg(),
-						Schema.OPTIONAL_HANDLING_TYPE.arg(), Schema.OPTIONAL_STRING.arg(), Schema.OPTIONAL_STRING.arg(),
-						lvar()));
-	}
-
-	/** The cargo's delivery as stored. */
-	public Literal stored(Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
-			Unifiable<TransportStatus> transportStatus, Unifiable<LOption<String>> lastKnownLocation,
-			Unifiable<LOption<String>> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<LOption<Instant>> eta,
-			Unifiable<LOption<HandlingType>> nextType, Unifiable<LOption<String>> nextLocation,
-			Unifiable<LOption<String>> nextVoyage, Unifiable<Boolean> unloadedAtDestination) {
-		return Literal.relation(Delivery.class, "stored")
-				.arg("trackingId", trackingId)
-				.arg("routingStatus", routingStatus)
-				.arg("transportStatus", transportStatus)
-				.arg("lastKnownLocation", lastKnownLocation)
-				.arg("currentVoyage", currentVoyage)
-				.arg("misdirected", misdirected)
-				.arg("eta", eta)
-				.arg("nextType", nextType)
-				.arg("nextLocation", nextLocation)
-				.arg("nextVoyage", nextVoyage)
-				.arg("unloadedAtDestination", unloadedAtDestination)
-				.solving(delivery(db, trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage,
-						misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination));
+	/** The cargo's delivery as its commands last stored it. */
+	public DeliveryDTO deliveryOf(String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return Query.of(delivery(db, lval(trackingId), c))
+				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
+						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
+				.map(c::delivery)
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	// -- the rows a command retracts and lands --------------------------------
@@ -119,7 +99,7 @@ public final class Delivery {
 	/** The delivery row the cargo holds, as a retraction takes it. */
 	List<Answer<Relation>> storedRows(String trackingId) {
 		DeliveryColumns c = new DeliveryColumns();
-		return rows(stored(lval(trackingId), c), delivery(null, lval(trackingId), c));
+		return rows(delivery(db, lval(trackingId), c), delivery(null, lval(trackingId), c));
 	}
 
 	/** Delivery.derivedFrom: the delivery the rules calculate now, as the row to land. */
@@ -149,7 +129,7 @@ public final class Delivery {
 		return new BreadthFirstScheduler<>(Question.select(question, template)).get();
 	}
 
-	/** The variables of one delivery row's columns, shared between a question and its template. */
+	/** The variables of one delivery row's columns, shared between a question and its template, and the row-to-value reading over them. */
 	private static final class DeliveryColumns {
 		final Unifiable<RoutingStatus> routingStatus = lvar();
 		final Unifiable<TransportStatus> transportStatus = lvar();
@@ -161,11 +141,20 @@ public final class Delivery {
 		final Unifiable<LOption<String>> nextLocation = lvar();
 		final Unifiable<LOption<String>> nextVoyage = lvar();
 		final Unifiable<Boolean> unloadedAtDestination = lvar();
-	}
 
-	private Literal stored(Unifiable<String> trackingId, DeliveryColumns c) {
-		return stored(trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
-				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+		DeliveryDTO delivery(Row row) {
+			return new DeliveryDTO(
+					row.get(routingStatus).get(),
+					row.get(transportStatus).get(),
+					row.get(lastKnownLocation).get().toOptional(),
+					row.get(currentVoyage).get().toOptional(),
+					row.get(misdirected).get(),
+					row.get(eta).get().toOptional(),
+					row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
+							row.get(nextLocation).get().toOptional().get(),
+							row.get(nextVoyage).get().toOptional())),
+					row.get(unloadedAtDestination).get());
+		}
 	}
 
 	private Literal calculated(Unifiable<String> trackingId, DeliveryColumns c) {

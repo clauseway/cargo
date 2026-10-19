@@ -12,9 +12,7 @@ import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
-import org.clauseway.shipping.Schema;
 
 public final class Voyages {
 
@@ -42,11 +40,6 @@ public final class Voyages {
 				.arg("departureTime", departureTime)
 				.arg("arrivalTime", arrivalTime)
 				.from(db);
-	}
-
-	/** The aggregate on a SQL source: a sailing's times as timestamps. */
-	public static SerializableSource onSql(SerializableSource source) {
-		return source.withCodec(carrierMovement(null, lvar(), lvar(), lvar(), Schema.INSTANT.arg(), Schema.INSTANT.arg()));
 	}
 
 	/** The voyage is known. */

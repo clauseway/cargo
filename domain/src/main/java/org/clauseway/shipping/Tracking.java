@@ -146,44 +146,9 @@ public final class Tracking {
 
 	// -- delivery: the stored row and the inspection ---------------------------
 
-	/** The cargo's delivery, as its commands last derived it. */
+	/** The cargo's delivery, as its commands last stored it. */
 	public DeliveryDTO deliveryOf(String trackingId) {
-		DeliveryColumns c = new DeliveryColumns();
-		return Query.of(delivery.stored(lval(trackingId), c.routingStatus, c.transportStatus, c.lastKnownLocation,
-						c.currentVoyage, c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination))
-				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
-						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
-				.map(c::delivery)
-				.findFirst()
-				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
-	}
-
-	/** The variables of the delivery row's columns and the row-to-value reading over them. */
-	private static final class DeliveryColumns {
-		final Unifiable<RoutingStatus> routingStatus = lvar();
-		final Unifiable<TransportStatus> transportStatus = lvar();
-		final Unifiable<LOption<String>> lastKnownLocation = lvar();
-		final Unifiable<LOption<String>> currentVoyage = lvar();
-		final Unifiable<Boolean> misdirected = lvar();
-		final Unifiable<LOption<Instant>> eta = lvar();
-		final Unifiable<LOption<HandlingType>> nextType = lvar();
-		final Unifiable<LOption<String>> nextLocation = lvar();
-		final Unifiable<LOption<String>> nextVoyage = lvar();
-		final Unifiable<Boolean> unloadedAtDestination = lvar();
-
-		DeliveryDTO delivery(Row row) {
-			return new DeliveryDTO(
-					row.get(routingStatus).get(),
-					row.get(transportStatus).get(),
-					row.get(lastKnownLocation).get().toOptional(),
-					row.get(currentVoyage).get().toOptional(),
-					row.get(misdirected).get(),
-					row.get(eta).get().toOptional(),
-					row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
-							row.get(nextLocation).get().toOptional().get(),
-							row.get(nextVoyage).get().toOptional())),
-					row.get(unloadedAtDestination).get());
-		}
+		return delivery.deliveryOf(trackingId);
 	}
 
 	/** The notices the cargo's delivery warrants now. */

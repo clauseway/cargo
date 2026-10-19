@@ -19,6 +19,7 @@ import java.util.Optional;
 import org.clauseway.functional.Nothing;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.sql.Schema;
 import org.clauseway.vavr.control.Try;
 import org.junit.After;
 import org.junit.AfterClass;

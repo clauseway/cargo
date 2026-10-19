@@ -130,6 +130,9 @@ public final class Shipping implements AutoCloseable {
 
 	/** CargoInspectionService.inspectCargo: the handling side's latest event for the cargo, handed to it. */
 	public Try<Shipping> inspectCargo(String trackingId) {
-		return cargo.inspect(trackingId, tracking.lastEventOf(trackingId)).map(Shipping::new);
+		return tracking.lastEventOf(trackingId)
+				.map(latest -> cargo.inspect(trackingId, latest))
+				.orElseGet(() -> cargo.inspect(trackingId))
+				.map(Shipping::new);
 	}
 }
