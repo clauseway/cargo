@@ -12,14 +12,8 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.clauseway.shipping.HandlingActivity;
 import org.clauseway.shipping.HandlingType;
 import org.clauseway.logic.finitedomain.Ints;
-import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -136,15 +130,5 @@ public final class Itinerary {
 				.solving(exclude(anyLeg(trackingId))
 						.or(plannedHandling(trackingId, lvar(), type, location, voyageNumber))
 						.or(type.unifies(HandlingType.CUSTOMS)));
-	}
-
-	/** The handlings the itinerary plans, in order; empty when the cargo is not routed. */
-	public List<HandlingActivity> planOf(String trackingId) {
-		Unifiable<Integer> step = lvar();
-		ActivityColumns c = new ActivityColumns();
-		return c.activities(Query.of(plannedHandling(lval(trackingId), step, c.type, c.location, c.voyageNumber))
-				.select(step, c.type, c.location, c.voyageNumber).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(step).get())))
-				.collect(Collectors.toList());
 	}
 }

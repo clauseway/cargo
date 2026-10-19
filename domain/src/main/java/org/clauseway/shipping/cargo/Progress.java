@@ -1,21 +1,21 @@
 package org.clauseway.shipping.cargo;
 
 // ABOUTME: dddsample's Delivery: the cargo's record of its progress and of the handling
-// ABOUTME: it was last shown — every field derived as a rule, stored whole by the cargo's commands.
+// ABOUTME: it was last shown — every field derived as a rule, the row they calculate stored by the cargo's commands.
 
-import static org.clauseway.shipping.Reads.first;
-import static org.clauseway.shipping.Reads.holds;
 import static org.clauseway.shipping.cargo.Cargo.routeSpecification;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
-import java.util.Optional;
-import org.clauseway.shipping.Delivery;
-import org.clauseway.shipping.HandlingActivity;
+import java.util.List;
+import java.util.function.Function;
+import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.Notice;
@@ -23,12 +23,15 @@ import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.shipping.Schema;
 import org.clauseway.shipping.TransportStatus;
 import org.clauseway.logic.finitedomain.Ints;
-import org.clauseway.logic.solving.Query;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.solving.Answer;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.Question;
+import org.clauseway.pldb.relations.Relation;
 import org.clauseway.pldb.sql.SerializableSource;
 
 public final class Progress {
@@ -89,17 +92,50 @@ public final class Progress {
 						lvar()));
 	}
 
-	/** The handling the cargo was last shown, if any. */
-	Optional<HandlingEvent> lastHandlingOf(String trackingId) {
+	/** The cargo's delivery as stored. */
+	public Literal stored(Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
+			Unifiable<TransportStatus> transportStatus, Unifiable<LOption<String>> lastKnownLocation,
+			Unifiable<LOption<String>> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<LOption<Instant>> eta,
+			Unifiable<LOption<HandlingType>> nextType, Unifiable<LOption<String>> nextLocation,
+			Unifiable<LOption<String>> nextVoyage, Unifiable<Boolean> unloadedAtDestination) {
+		return Literal.relation(Progress.class, "stored")
+				.arg("trackingId", trackingId)
+				.arg("routingStatus", routingStatus)
+				.arg("transportStatus", transportStatus)
+				.arg("lastKnownLocation", lastKnownLocation)
+				.arg("currentVoyage", currentVoyage)
+				.arg("misdirected", misdirected)
+				.arg("eta", eta)
+				.arg("nextType", nextType)
+				.arg("nextLocation", nextLocation)
+				.arg("nextVoyage", nextVoyage)
+				.arg("unloadedAtDestination", unloadedAtDestination)
+				.solving(delivery(db, trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage,
+						misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination));
+	}
+
+	// -- the rows a command retracts and lands --------------------------------
+
+	/** The delivery row the cargo holds, as a retraction takes it. */
+	List<Answer<Relation>> deliveryRows(String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return rows(stored(lval(trackingId), c), delivery(null, lval(trackingId), c));
+	}
+
+	/** Delivery.derivedFrom: the delivery the rules calculate now, as the row to land. */
+	List<Answer<Relation>> calculatedRows(String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return rows(calculated(lval(trackingId), c), delivery(null, lval(trackingId), c));
+	}
+
+	/** The handling the cargo holds, as a retraction takes it. */
+	List<Answer<Relation>> lastHandlingRows(String trackingId) {
 		Unifiable<HandlingType> type = lvar();
 		Unifiable<String> location = lvar();
 		Unifiable<LOption<String>> voyageNumber = lvar();
 		Unifiable<Instant> completed = lvar();
-		return Query.of(lastHandling(db, lval(trackingId), type, location, voyageNumber, completed))
-				.select(type, location, voyageNumber, completed).rows()
-				.map(row -> new HandlingEvent(row.get(type).get(), row.get(location).get(),
-						row.get(voyageNumber).get().toOptional(), row.get(completed).get()))
-				.findFirst();
+		return rows(lastHandling(db, lval(trackingId), type, location, voyageNumber, completed),
+				lastHandling(null, lval(trackingId), type, location, voyageNumber, completed));
 	}
 
 	/** A handling as the cargo keeps it, as a fact. */
@@ -108,69 +144,96 @@ public final class Progress {
 				LOption.of(event.getVoyageNumber()), lval(event.getCompletionTime()));
 	}
 
-	/** The delivery stored for the cargo, if it is booked. */
-	public Optional<Delivery> stored(String trackingId) {
-		Unifiable<RoutingStatus> routingStatus = lvar();
-		Unifiable<TransportStatus> transportStatus = lvar();
-		Unifiable<LOption<String>> lastKnownLocation = lvar();
-		Unifiable<LOption<String>> currentVoyage = lvar();
-		Unifiable<Boolean> misdirected = lvar();
-		Unifiable<LOption<Instant>> eta = lvar();
-		Unifiable<LOption<HandlingType>> nextType = lvar();
-		Unifiable<LOption<String>> nextLocation = lvar();
-		Unifiable<LOption<String>> nextVoyage = lvar();
-		Unifiable<Boolean> unloadedAtDestination = lvar();
-		return Query.of(delivery(db, lval(trackingId), routingStatus, transportStatus, lastKnownLocation, currentVoyage,
-						misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination))
-				.select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
-						nextType, nextLocation, nextVoyage, unloadedAtDestination).rows()
-				.map(row -> new Delivery(
-						row.get(routingStatus).get(),
-						row.get(transportStatus).get(),
-						row.get(lastKnownLocation).get().toOptional(),
-						row.get(currentVoyage).get().toOptional(),
-						row.get(misdirected).get(),
-						row.get(eta).get().toOptional(),
-						row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
-								row.get(nextLocation).get().toOptional().get(),
-								row.get(nextVoyage).get().toOptional())),
-						row.get(unloadedAtDestination).get()))
-				.findFirst();
+	/** The question's answers in the template's shape, as rows a write door takes. */
+	private static List<Answer<Relation>> rows(Literal question, Literal template) {
+		return new BreadthFirstScheduler<>(Question.select(question, template)).get();
 	}
 
-	/** The delivery as the row the cargo stores. */
-	static Literal row(AnswerSource db, String trackingId, Delivery delivery) {
-		Optional<HandlingActivity> next = delivery.getNextExpectedActivity();
-		return Progress.delivery(db, lval(trackingId), lval(delivery.getRoutingStatus()), lval(delivery.getTransportStatus()),
-				LOption.of(delivery.getLastKnownLocation()), LOption.of(delivery.getCurrentVoyage()),
-				lval(delivery.isMisdirected()), LOption.of(delivery.getEta()),
-				LOption.of(next.map(HandlingActivity::getType)), LOption.of(next.map(HandlingActivity::getLocation)),
-				LOption.of(next.flatMap(HandlingActivity::getVoyageNumber)), lval(delivery.isUnloadedAtDestination()));
+	/** The variables of one delivery row's columns, shared between a question and its template. */
+	private static final class DeliveryColumns {
+		final Unifiable<RoutingStatus> routingStatus = lvar();
+		final Unifiable<TransportStatus> transportStatus = lvar();
+		final Unifiable<LOption<String>> lastKnownLocation = lvar();
+		final Unifiable<LOption<String>> currentVoyage = lvar();
+		final Unifiable<Boolean> misdirected = lvar();
+		final Unifiable<LOption<Instant>> eta = lvar();
+		final Unifiable<LOption<HandlingType>> nextType = lvar();
+		final Unifiable<LOption<String>> nextLocation = lvar();
+		final Unifiable<LOption<String>> nextVoyage = lvar();
+		final Unifiable<Boolean> unloadedAtDestination = lvar();
 	}
 
-	/** Delivery.derivedFrom: every field as the rules give it now, from the specification, the itinerary and the last handling shown. */
-	Delivery derived(String trackingId) {
-		Unifiable<String> id = lval(trackingId);
-		Unifiable<RoutingStatus> routingStatus = lvar();
-		Unifiable<TransportStatus> transport = lvar();
-		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
-		Unifiable<Instant> time = lvar();
-		ActivityColumns next = new ActivityColumns();
-		return new Delivery(
-				first(routing.routingStatus(id, routingStatus), routingStatus)
-						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
-				first(transportStatus(id, transport), transport)
-						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
-				first(lastKnownLocation(id, location), location),
-				first(currentVoyage(id, voyageNumber), voyageNumber),
-				holds(misdirected(id)),
-				first(eta(id, time), time),
-				next.activities(next.select(nextExpectedActivity(id, next.type, next.location, next.voyageNumber))).findFirst(),
-				holds(unloadedAtDestination(id)));
+	private Literal stored(Unifiable<String> trackingId, DeliveryColumns c) {
+		return stored(trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
+				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+	}
+
+	private Literal calculated(Unifiable<String> trackingId, DeliveryColumns c) {
+		return calculated(trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
+				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+	}
+
+	private static Literal delivery(AnswerSource db, Unifiable<String> trackingId, DeliveryColumns c) {
+		return delivery(db, trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
+				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
 	}
 
 	// -- the derivation: each field a rule over the cargo's own relations ----
+
+	/**
+	 * Delivery.derivedFrom as one rule: the delivery row the rules give now.
+	 * The partial fields are reified to their columns — the value where the
+	 * rule holds, none where it does not — and the predicates to booleans;
+	 * the rules themselves stay partial for each other.
+	 */
+	public Literal calculated(Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
+			Unifiable<TransportStatus> transportStatus, Unifiable<LOption<String>> lastKnownLocation,
+			Unifiable<LOption<String>> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<LOption<Instant>> eta,
+			Unifiable<LOption<HandlingType>> nextType, Unifiable<LOption<String>> nextLocation,
+			Unifiable<LOption<String>> nextVoyage, Unifiable<Boolean> unloadedAtDestination) {
+		return Literal.relation(Progress.class, "calculated")
+				.arg("trackingId", trackingId)
+				.arg("routingStatus", routingStatus)
+				.arg("transportStatus", transportStatus)
+				.arg("lastKnownLocation", lastKnownLocation)
+				.arg("currentVoyage", currentVoyage)
+				.arg("misdirected", misdirected)
+				.arg("eta", eta)
+				.arg("nextType", nextType)
+				.arg("nextLocation", nextLocation)
+				.arg("nextVoyage", nextVoyage)
+				.arg("unloadedAtDestination", unloadedAtDestination)
+				.solving(routing.routingStatus(trackingId, routingStatus)
+						.and(transportStatus(trackingId, transportStatus))
+						.and(optional(location -> lastKnownLocation(trackingId, location), lastKnownLocation))
+						.and(optional(voyage -> currentVoyage(trackingId, voyage), currentVoyage))
+						.and(flag(misdirected(trackingId), misdirected))
+						.and(optional(time -> eta(trackingId, time), eta))
+						.and(defer(() -> {
+							Unifiable<HandlingType> type = lvar();
+							Unifiable<String> location = lvar();
+							return nextExpectedActivity(trackingId, type, location, nextVoyage)
+									.and(nextType.unifies(some(type)))
+									.and(nextLocation.unifies(some(location)));
+						}).or(exclude(nextExpectedActivity(trackingId, projected(), projected(), projected()))
+								.and(nextType.unifies(none()))
+								.and(nextLocation.unifies(none()))
+								.and(nextVoyage.unifies(none()))))
+						.and(flag(unloadedAtDestination(trackingId), unloadedAtDestination)));
+	}
+
+	/** A partial rule reified to a column: its value where it holds, none where it does not. */
+	private static <T> Goal optional(Function<Unifiable<T>, Literal> rule, Unifiable<LOption<T>> column) {
+		return defer(() -> {
+			Unifiable<T> value = lvar();
+			return rule.apply(value).and(column.unifies(some(value)));
+		}).or(exclude(rule.apply(projected())).and(column.unifies(none())));
+	}
+
+	/** A predicate reified to a boolean column. */
+	private static Goal flag(Literal rule, Unifiable<Boolean> column) {
+		return rule.and(column.unifies(true)).or(exclude(rule).and(column.unifies(false)));
+	}
 
 	/** The transport status each handling kind leaves the cargo in: a lookup, as a relation over its own facts. */
 	private static Literal transportOf(AnswerSource table, Unifiable<HandlingType> type,

@@ -95,13 +95,30 @@ public final class Tracking {
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
 	public List<HandlingActivity> planOf(String trackingId) {
-		return itinerary.planOf(trackingId);
+		Unifiable<Integer> step = lvar();
+		ActivityColumns c = new ActivityColumns();
+		return c.activities(Query.of(itinerary.plannedHandling(lval(trackingId), step, c.type, c.location, c.voyageNumber))
+				.select(step, c.type, c.location, c.voyageNumber).rows()
+				.sorted(Comparator.comparing((Row row) -> row.get(step).get())))
+				.collect(Collectors.toList());
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
 		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber())));
+	}
+
+	/** The variables of one planned handling's columns and the row-to-value reading over them. */
+	private static final class ActivityColumns {
+		final Unifiable<HandlingType> type = lvar();
+		final Unifiable<String> location = lvar();
+		final Unifiable<LOption<String>> voyageNumber = lvar();
+
+		Stream<HandlingActivity> activities(Stream<Row> rows) {
+			return rows.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
+					row.get(voyageNumber).get().toOptional()));
+		}
 	}
 
 	// -- routing: the specification and the routes that satisfy it ------------
@@ -131,8 +148,42 @@ public final class Tracking {
 
 	/** The cargo's delivery, as its commands last derived it. */
 	public Delivery deliveryOf(String trackingId) {
-		return cargo.deliveryOf(trackingId)
+		DeliveryColumns c = new DeliveryColumns();
+		return Query.of(progress.stored(lval(trackingId), c.routingStatus, c.transportStatus, c.lastKnownLocation,
+						c.currentVoyage, c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination))
+				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
+						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
+				.map(c::delivery)
+				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
+	}
+
+	/** The variables of the delivery row's columns and the row-to-value reading over them. */
+	private static final class DeliveryColumns {
+		final Unifiable<RoutingStatus> routingStatus = lvar();
+		final Unifiable<TransportStatus> transportStatus = lvar();
+		final Unifiable<LOption<String>> lastKnownLocation = lvar();
+		final Unifiable<LOption<String>> currentVoyage = lvar();
+		final Unifiable<Boolean> misdirected = lvar();
+		final Unifiable<LOption<Instant>> eta = lvar();
+		final Unifiable<LOption<HandlingType>> nextType = lvar();
+		final Unifiable<LOption<String>> nextLocation = lvar();
+		final Unifiable<LOption<String>> nextVoyage = lvar();
+		final Unifiable<Boolean> unloadedAtDestination = lvar();
+
+		Delivery delivery(Row row) {
+			return new Delivery(
+					row.get(routingStatus).get(),
+					row.get(transportStatus).get(),
+					row.get(lastKnownLocation).get().toOptional(),
+					row.get(currentVoyage).get().toOptional(),
+					row.get(misdirected).get(),
+					row.get(eta).get().toOptional(),
+					row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
+							row.get(nextLocation).get().toOptional().get(),
+							row.get(nextVoyage).get().toOptional())),
+					row.get(unloadedAtDestination).get());
+		}
 	}
 
 	/** The notices the cargo's delivery warrants now. */

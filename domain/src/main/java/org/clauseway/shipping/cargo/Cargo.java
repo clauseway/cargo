@@ -25,7 +25,6 @@ import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
-import org.clauseway.shipping.Delivery;
 import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.RouteSpecification;
@@ -163,11 +162,6 @@ public final class Cargo {
 				.findFirst();
 	}
 
-	/** The cargo's delivery as it last derived it. */
-	public Optional<Delivery> deliveryOf(String trackingId) {
-		return progress.stored(trackingId);
-	}
-
 	/** The variables of one leg's columns and the row-to-value reading over them. */
 	private static final class LegColumns {
 		final Unifiable<String> voyageNumber = lvar();
@@ -250,27 +244,19 @@ public final class Cargo {
 
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId, Optional<HandlingEvent> latest) {
-		return Command.guarded(bookedDenials(trackingId), () -> {
-			Optional<HandlingEvent> shown = progress.lastHandlingOf(trackingId);
-			if (shown.equals(latest)) {
-				return db;
-			}
-			return delivered(trackingId, db
-					.retracting(rows(shown.map(event -> Progress.shown(db, trackingId, event))))
-					.asserting(rows(latest.map(event -> Progress.shown(db, trackingId, event)))));
-		});
+		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
+				.retracting(progress.lastHandlingRows(trackingId))
+				.asserting(rows(latest.map(event -> Progress.shown(db, trackingId, event))))));
 	}
 
-	/** Every command's last step: the delivery derived over the staged state replaces the stored one, when it differs. */
+	/**
+	 * Every command's last step: the stored delivery row leaves and the row the
+	 * rules calculate over the staged state lands; an unchanged one cancels to nothing.
+	 */
 	private Transaction delivered(String trackingId, Transaction staged) {
-		Delivery next = new Cargo(staged).progress.derived(trackingId);
-		Optional<Delivery> current = progress.stored(trackingId);
-		if (current.filter(next::equals).isPresent()) {
-			return staged;
-		}
 		return staged
-				.retracting(rows(current.map(delivery -> Progress.row(db, trackingId, delivery))))
-				.asserting(Progress.row(db, trackingId, next));
+				.retracting(progress.deliveryRows(trackingId))
+				.asserting(new Cargo(staged).progress.calculatedRows(trackingId));
 	}
 
 	/** The cargo specified as given, as a fact. */
