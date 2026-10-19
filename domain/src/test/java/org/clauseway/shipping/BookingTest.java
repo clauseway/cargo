@@ -4,7 +4,6 @@ package org.clauseway.shipping;
 // ABOUTME: dddsample's testRoutingStatus — a new specification re-judges the route.
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.clauseway.shipping.Hours.hour;
 import static org.clauseway.shipping.Refused.denials;
 
@@ -15,9 +14,7 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.cargo.Routing;
 import org.clauseway.shipping.location.Locations;
-import org.clauseway.shipping.voyage.Voyages;
 import org.junit.Test;
 
 public class BookingTest {
@@ -112,8 +109,7 @@ public class BookingTest {
 	@Test
 	public void theRootRefusesASecondBookingWithoutTheFacade() {
 		Transaction db = Transaction.recording(bookedStore().open("direct"));
-		Itinerary itinerary = new Itinerary(db);
-		Cargo cargo = new Cargo(db, itinerary, new Routing(db, itinerary, new Voyages(db), new Locations(db)));
+		Cargo cargo = new Cargo(db);
 		assertThat(cargo.book("XYZ", HAMBURG, MELBOURNE, hour(100)).getCause()).hasMessage("already booked");
 	}
 
@@ -152,15 +148,14 @@ public class BookingTest {
 	}
 
 	/**
-	 * The engine's rule, received: a fact this transaction asserted cannot be
-	 * retracted by it before a commit — booking and re-specifying in one
-	 * transaction is refused, not cancelled out (ledger entry 4).
+	 * The engine's rule, received: a fact this transaction staged and takes back
+	 * cancels out — booking and re-specifying in one transaction leaves the
+	 * second specification alone (ledger entry 4).
 	 */
 	@Test
-	public void reSpecifyingBeforeTheBookingIsCommittedIsRefused() {
+	public void reSpecifyingBeforeTheBookingIsCommittedReplacesTheSpecification() {
 		Shipping booked = SampleLocations.declaredIn(Shipping.empty()).bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
-		assertThatThrownBy(() -> booked.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("opposite polarity");
+		assertThat(booked.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get().tracking().routeSpecificationOf("XYZ"))
+				.contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
 	}
 }

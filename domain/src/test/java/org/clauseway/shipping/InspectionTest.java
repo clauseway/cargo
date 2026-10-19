@@ -36,13 +36,22 @@ public class InspectionTest {
 						new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
+	/** The handling is registered on its own side; the cargo learns of it when inspected, as CargoInspectionService does. */
+	@Test
+	public void aHandlingReachesTheDeliveryWhenTheCargoIsInspected() {
+		Shipping received = routed().withHandlingEvent("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0));
+		assertThat(received.tracking().deliveryOf("CARGO1").getLastKnownLocation()).isEmpty();
+		assertThat(received.inspectCargo("CARGO1").get().tracking().deliveryOf("CARGO1").getLastKnownLocation())
+				.contains(SHANGHAI);
+	}
+
 	@Test
 	public void aCargoOnTrackRaisesNothing() {
-		assertThat(routed().tracking().inspect("CARGO1")).isEmpty();
+		assertThat(routed().tracking().noticesOf("CARGO1")).isEmpty();
 		assertThat(routed()
 				.withHandlingEvent("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0))
 				.withHandlingEvent("CARGO1", LOAD, SHANGHAI, VOYAGE, hour(1), hour(1))
-				.tracking().inspect("CARGO1")).isEmpty();
+				.inspectCargo("CARGO1").get().tracking().noticesOf("CARGO1")).isEmpty();
 	}
 
 	@Test
@@ -50,7 +59,7 @@ public class InspectionTest {
 		assertThat(routed()
 				.withHandlingEvent("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0))
 				.withHandlingEvent("CARGO1", LOAD, SHANGHAI, WRONG_VOYAGE, hour(1), hour(1))
-				.tracking().inspect("CARGO1")).containsExactly(MISDIRECTED);
+				.inspectCargo("CARGO1").get().tracking().noticesOf("CARGO1")).containsExactly(MISDIRECTED);
 	}
 
 	@Test
@@ -61,7 +70,7 @@ public class InspectionTest {
 				.withHandlingEvent("CARGO1", UNLOAD, ROTTERDAM, VOYAGE, hour(2), hour(2))
 				.withHandlingEvent("CARGO1", LOAD, ROTTERDAM, VOYAGE, hour(3), hour(3))
 				.withHandlingEvent("CARGO1", UNLOAD, GOTHENBURG, VOYAGE, hour(4), hour(4))
-				.tracking().inspect("CARGO1")).containsExactly(ARRIVED);
+				.inspectCargo("CARGO1").get().tracking().noticesOf("CARGO1")).containsExactly(ARRIVED);
 	}
 
 	/** Arriving off the wrong ship is both: dddsample raises both events too. */
@@ -71,6 +80,6 @@ public class InspectionTest {
 				.withHandlingEvent("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0))
 				.withHandlingEvent("CARGO1", LOAD, SHANGHAI, WRONG_VOYAGE, hour(1), hour(1))
 				.withHandlingEvent("CARGO1", UNLOAD, GOTHENBURG, WRONG_VOYAGE, hour(4), hour(4))
-				.tracking().inspect("CARGO1")).containsExactlyInAnyOrder(MISDIRECTED, ARRIVED);
+				.inspectCargo("CARGO1").get().tracking().noticesOf("CARGO1")).containsExactlyInAnyOrder(MISDIRECTED, ARRIVED);
 	}
 }

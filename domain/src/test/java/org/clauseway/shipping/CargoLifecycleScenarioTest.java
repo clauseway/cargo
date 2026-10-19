@@ -93,10 +93,10 @@ public class CargoLifecycleScenarioTest {
 				.withCarrierMovement(V400, HELSINKI, HAMBURG, day("2009-03-20"), day("2009-03-22"));
 	}
 
-	/** The scenario's handling report: completed and registered on the same day. */
-	private static Shipping handled(Shipping s, String date, Optional<String> voyage, String location,
-			HandlingType type) {
-		return s.registerHandling(TRACKING_ID, type, location, voyage, day(date), day(date)).get();
+	/** The scenario's handling report, completed and registered on the same day, then the inspection it triggers: two transactions, as the sample's message hop makes them. */
+	private void handle(String date, Optional<String> voyage, String location, HandlingType type) {
+		commit(s -> s.registerHandling(TRACKING_ID, type, location, voyage, day(date), day(date)).get());
+		commit(s -> s.inspectCargo(TRACKING_ID).get());
 	}
 
 	@Test
@@ -134,13 +134,13 @@ public class CargoLifecycleScenarioTest {
 
 		/* Use case 3: handling
 		   Handling begins: cargo is received in Hongkong. */
-		commit(s -> handled(s, "2009-03-01", Optional.empty(), HONGKONG, RECEIVE));
+		handle("2009-03-01", Optional.empty(), HONGKONG, RECEIVE);
 
 		assertThat(delivery().getTransportStatus()).isEqualTo(IN_PORT);
 		assertThat(delivery().getLastKnownLocation()).contains(HONGKONG);
 
 		// Next event: Load onto voyage V100 in Hongkong
-		commit(s -> handled(s, "2009-03-03", Optional.of(V100), HONGKONG, LOAD));
+		handle("2009-03-03", Optional.of(V100), HONGKONG, LOAD);
 
 		assertThat(delivery().getCurrentVoyage()).contains(V100);
 		assertThat(delivery().getLastKnownLocation()).contains(HONGKONG);
@@ -157,7 +157,7 @@ public class CargoLifecycleScenarioTest {
 				day("2009-03-05"), day("2009-03-05")).isFailure()).isTrue();
 
 		/* Cargo is now (incorrectly) unloaded in Tokyo. */
-		commit(s -> handled(s, "2009-03-05", Optional.of(V100), TOKYO, UNLOAD));
+		handle("2009-03-05", Optional.of(V100), TOKYO, UNLOAD);
 
 		assertThat(delivery().getCurrentVoyage()).isEmpty();
 		assertThat(delivery().getLastKnownLocation()).contains(TOKYO);
@@ -180,7 +180,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getRoutingStatus()).isEqualTo(ROUTED);
 
 		// Load in Tokyo
-		commit(s -> handled(s, "2009-03-08", Optional.of(V300), TOKYO, LOAD));
+		handle("2009-03-08", Optional.of(V300), TOKYO, LOAD);
 
 		assertThat(delivery().getCurrentVoyage()).contains(V300);
 		assertThat(delivery().getLastKnownLocation()).contains(TOKYO);
@@ -190,7 +190,7 @@ public class CargoLifecycleScenarioTest {
 				.contains(new HandlingActivity(UNLOAD, HAMBURG, Optional.of(V300)));
 
 		// Unload in Hamburg
-		commit(s -> handled(s, "2009-03-12", Optional.of(V300), HAMBURG, UNLOAD));
+		handle("2009-03-12", Optional.of(V300), HAMBURG, UNLOAD);
 
 		assertThat(delivery().getCurrentVoyage()).isEmpty();
 		assertThat(delivery().getLastKnownLocation()).contains(HAMBURG);
@@ -200,7 +200,7 @@ public class CargoLifecycleScenarioTest {
 				.contains(new HandlingActivity(LOAD, HAMBURG, Optional.of(V400)));
 
 		// Load in Hamburg
-		commit(s -> handled(s, "2009-03-14", Optional.of(V400), HAMBURG, LOAD));
+		handle("2009-03-14", Optional.of(V400), HAMBURG, LOAD);
 
 		assertThat(delivery().getCurrentVoyage()).contains(V400);
 		assertThat(delivery().getLastKnownLocation()).contains(HAMBURG);
@@ -210,7 +210,7 @@ public class CargoLifecycleScenarioTest {
 				.contains(new HandlingActivity(UNLOAD, STOCKHOLM, Optional.of(V400)));
 
 		// Unload in Stockholm
-		commit(s -> handled(s, "2009-03-15", Optional.of(V400), STOCKHOLM, UNLOAD));
+		handle("2009-03-15", Optional.of(V400), STOCKHOLM, UNLOAD);
 
 		assertThat(delivery().getCurrentVoyage()).isEmpty();
 		assertThat(delivery().getLastKnownLocation()).contains(STOCKHOLM);
@@ -220,7 +220,7 @@ public class CargoLifecycleScenarioTest {
 				.contains(new HandlingActivity(CLAIM, STOCKHOLM, Optional.empty()));
 
 		// Finally, cargo is claimed in Stockholm. This ends the cargo lifecycle from our perspective.
-		commit(s -> handled(s, "2009-03-16", Optional.empty(), STOCKHOLM, CLAIM));
+		handle("2009-03-16", Optional.empty(), STOCKHOLM, CLAIM);
 
 		assertThat(delivery().getCurrentVoyage()).isEmpty();
 		assertThat(delivery().getLastKnownLocation()).contains(STOCKHOLM);

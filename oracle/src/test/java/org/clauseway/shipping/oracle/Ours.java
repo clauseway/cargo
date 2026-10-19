@@ -71,9 +71,11 @@ final class Ours {
 		commit(s -> s.specifyNewRoute(trackingId, origin, destination, deadline));
 	}
 
+	/** HandlingEventService registers the event; CargoInspectionService, in its own transaction, shows it to the cargo. */
 	void handle(String trackingId, HandlingType type, String location, Optional<String> voyageNumber,
 			Instant completion, Instant registration) {
 		commit(s -> s.registerHandling(trackingId, type, location, voyageNumber, completion, registration));
+		commit(s -> s.inspectCargo(trackingId));
 	}
 
 	Snapshot delivery(String trackingId) {

@@ -16,8 +16,10 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.clauseway.functional.Nothing;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.vavr.control.Try;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -59,7 +61,7 @@ public class PostgresWorldTest {
 	public void resetSchema() throws SQLException {
 		try (Connection admin = connect(); Statement ddl = admin.createStatement()) {
 			for (String table : new String[]{"location", "voyage", "carrierMovement", "cargo",
-					"routeSpecification", "leg", "handlingEvent"}) {
+					"routeSpecification", "leg", "lastHandling", "delivery", "handlingEvent"}) {
 				ddl.execute("DROP TABLE IF EXISTS " + table);
 			}
 			ddl.execute("CREATE TABLE location(unlocode VARCHAR(5) NOT NULL, name VARCHAR(64) NOT NULL)");
@@ -73,6 +75,12 @@ public class PostgresWorldTest {
 			ddl.execute("CREATE TABLE leg(trackingId VARCHAR(16) NOT NULL, index INT NOT NULL,"
 					+ " voyageNumber VARCHAR(16) NOT NULL, loadLocation VARCHAR(5) NOT NULL,"
 					+ " unloadLocation VARCHAR(5) NOT NULL, loadTime TIMESTAMP NOT NULL, unloadTime TIMESTAMP NOT NULL)");
+			ddl.execute("CREATE TABLE lastHandling(trackingId VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL,"
+					+ " location VARCHAR(5) NOT NULL, voyageNumber VARCHAR(16), completed TIMESTAMP NOT NULL)");
+			ddl.execute("CREATE TABLE delivery(trackingId VARCHAR(16) NOT NULL, routingStatus VARCHAR(16) NOT NULL,"
+					+ " transportStatus VARCHAR(16) NOT NULL, lastKnownLocation VARCHAR(5), currentVoyage VARCHAR(16),"
+					+ " misdirected BOOLEAN NOT NULL, eta TIMESTAMP, nextType VARCHAR(16), nextLocation VARCHAR(5),"
+					+ " nextVoyage VARCHAR(16), unloadedAtDestination BOOLEAN NOT NULL)");
 			ddl.execute("CREATE TABLE handlingEvent(trackingId VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL,"
 					+ " location VARCHAR(5) NOT NULL, voyageNumber VARCHAR(16),"
 					+ " completionTime TIMESTAMP NOT NULL, registrationTime TIMESTAMP NOT NULL)");
@@ -134,18 +142,21 @@ public class PostgresWorldTest {
 				.registerHandling("CARGO1", UNLOAD, GOTHENBURG, Optional.of(VOYAGE), hour(4), hour(4)).get()
 				.commit().isSuccess()).isTrue();
 
+		assertThat(open("inspect").inspectCargo("CARGO1").get().commit().isSuccess()).isTrue();
+
 		Shipping arrived = open("read");
 		assertThat(arrived.tracking().deliveryOf("CARGO1")).isEqualTo(new Delivery(
 				RoutingStatus.ROUTED, TransportStatus.IN_PORT, Optional.of(GOTHENBURG), Optional.empty(),
 				false, Optional.of(hour(4)),
 				Optional.of(new HandlingActivity(HandlingType.CLAIM, GOTHENBURG, Optional.empty())), true));
-		assertThat(arrived.tracking().inspect("CARGO1")).containsExactly(Notice.ARRIVED);
+		assertThat(arrived.tracking().noticesOf("CARGO1")).containsExactly(Notice.ARRIVED);
 
 		assertThat(open("misdirect")
 				.registerHandling("CARGO1", LOAD, GOTHENBURG, Optional.of(WRONG_VOYAGE), hour(5), hour(5))
 				.get().commit().isSuccess()).isTrue();
-		Shipping astray = open("inspect");
-		assertThat(astray.tracking().inspect("CARGO1")).containsExactly(Notice.MISDIRECTED);
+		assertThat(open("inspect-again").inspectCargo("CARGO1").get().commit().isSuccess()).isTrue();
+		Shipping astray = open("astray");
+		assertThat(astray.tracking().noticesOf("CARGO1")).containsExactly(Notice.MISDIRECTED);
 		assertThat(astray.tracking().deliveryOf("CARGO1").getCurrentVoyage()).contains(WRONG_VOYAGE);
 	}
 
@@ -167,15 +178,13 @@ public class PostgresWorldTest {
 	}
 
 	/**
-	 * The route chosen for a specification another party then changes:
-	 * SSI admits both commits, because the schedule is serializable as
-	 * "route first, then re-specify", and the derived status says what that
-	 * order means. The simulated tier refuses the same schedule
-	 * (CertifiedWriteTest): its pin asks that the read still hold, which is
-	 * stricter than serializability.
+	 * The route chosen for a specification another party then changes: both
+	 * derive and store the delivery, so the two commits are a read-write cycle
+	 * and SSI refuses the second, as the simulated tier does (CertifiedWriteTest).
+	 * Re-solved on the world as it is, the same route lands as misrouted.
 	 */
 	@Test
-	public void aRouteChosenForASpecificationTheWorldHasLeftIsSerializable() throws SQLException {
+	public void aRouteChosenForASpecificationTheWorldHasLeftIsRefusedThenLandsAsMisrouted() throws SQLException {
 		seed();
 		Shipping routing = open("route");
 		List<Leg> chosen = routing.tracking().routeCandidatesOf("CARGO1").get(0);
@@ -184,7 +193,11 @@ public class PostgresWorldTest {
 		assertThat(open("reroute").specifyNewRoute("CARGO1", SHANGHAI, ROTTERDAM, hour(5)).get()
 				.commit().isSuccess()).isTrue();
 
-		assertThat(routed.commit().isSuccess()).isTrue();
+		Try<Nothing> refused = routed.commit();
+		assertThat(refused.isFailure()).isTrue();
+		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
+
+		assertThat(open("route-again").assignToRoute("CARGO1", chosen).get().commit().isSuccess()).isTrue();
 		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.MISROUTED);
 	}
 }

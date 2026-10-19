@@ -5,6 +5,9 @@ package org.clauseway.shipping;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.shipping.Reads.first;
+import static org.clauseway.shipping.Reads.holds;
+import static org.clauseway.shipping.Reads.values;
 
 import java.time.Instant;
 import java.util.Comparator;
@@ -17,7 +20,6 @@ import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.shipping.cargo.Cargo;
@@ -34,12 +36,12 @@ public final class Tracking {
 	private final Routing routing;
 	private final Progress progress;
 
-	Tracking(Cargo cargo, History history, Itinerary itinerary, Routing routing, Progress progress) {
+	Tracking(Cargo cargo, History history) {
 		this.cargo = cargo;
 		this.history = history;
-		this.itinerary = itinerary;
-		this.routing = routing;
-		this.progress = progress;
+		this.itinerary = cargo.getItinerary();
+		this.routing = cargo.getRouting();
+		this.progress = cargo.getProgress();
 	}
 
 	// -- history: the handling events ---------------------------------------
@@ -93,34 +95,13 @@ public final class Tracking {
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
 	public List<HandlingActivity> planOf(String trackingId) {
-		Unifiable<Integer> step = lvar();
-		ActivityColumns c = new ActivityColumns();
-		return c.activities(Query.of(itinerary.plannedHandling(lval(trackingId), step, c.type, c.location, c.voyageNumber))
-				.select(step, c.type, c.location, c.voyageNumber).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(step).get())))
-				.collect(Collectors.toList());
+		return itinerary.planOf(trackingId);
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
 		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber())));
-	}
-
-	/** The variables of one planned handling's columns and the row-to-value reading over them. */
-	private static final class ActivityColumns {
-		final Unifiable<HandlingType> type = lvar();
-		final Unifiable<String> location = lvar();
-		final Unifiable<LOption<String>> voyageNumber = lvar();
-
-		Stream<Row> select(Literal activities) {
-			return Query.of(activities).select(type, location, voyageNumber).rows();
-		}
-
-		Stream<HandlingActivity> activities(Stream<Row> rows) {
-			return rows.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
-					row.get(voyageNumber).get().toOptional()));
-		}
 	}
 
 	// -- routing: the specification and the routes that satisfy it ------------
@@ -148,50 +129,15 @@ public final class Tracking {
 
 	// -- progress: the delivery and the inspection ----------------------------
 
-	/** The cargo's delivery, every field derived now from the facts. */
+	/** The cargo's delivery, as its commands last derived it. */
 	public Delivery deliveryOf(String trackingId) {
-		Unifiable<String> id = lval(trackingId);
-		Unifiable<TransportStatus> transport = lvar();
-		Unifiable<String> location = lvar();
-		Unifiable<String> voyageNumber = lvar();
-		Unifiable<Instant> eta = lvar();
-		return new Delivery(
-				routingStatusOf(trackingId),
-				first(progress.transportStatus(id, transport), transport)
-						.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId)),
-				first(progress.lastKnownLocation(id, location), location),
-				first(progress.currentVoyage(id, voyageNumber), voyageNumber),
-				holds(progress.misdirected(id)),
-				first(progress.eta(id, eta), eta),
-				nextExpectedActivityOf(trackingId),
-				holds(progress.unloadedAtDestination(id)));
+		return cargo.deliveryOf(trackingId)
+				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
-	/** The inspection after a handling: the notices the cargo's state warrants now. */
-	public List<Notice> inspect(String trackingId) {
+	/** The notices the cargo's delivery warrants now. */
+	public List<Notice> noticesOf(String trackingId) {
 		Unifiable<Notice> notice = lvar();
-		return values(Query.of(progress.notice(lval(trackingId), notice)).solve(notice));
-	}
-
-	private Optional<HandlingActivity> nextExpectedActivityOf(String trackingId) {
-		ActivityColumns c = new ActivityColumns();
-		return c.activities(c.select(progress.nextExpectedActivity(lval(trackingId), c.type, c.location, c.voyageNumber)))
-				.findFirst();
-	}
-
-	// -- reading answers ---------------------------------------------------------
-
-	/** The first answer for one variable of a goal, if any. */
-	private static <T> Optional<T> first(Literal goal, Unifiable<T> out) {
-		return Query.of(goal).solve(out).findFirst().map(Reified::get);
-	}
-
-	/** Whether a ground goal has an answer at all. */
-	private static boolean holds(Literal goal) {
-		return Query.of(goal).solve(lval(true)).findAny().isPresent();
-	}
-
-	private static <T> List<T> values(Stream<Reified<T>> answers) {
-		return answers.map(Reified::get).collect(Collectors.toList());
+		return values(progress.notice(lval(trackingId), notice), notice);
 	}
 }

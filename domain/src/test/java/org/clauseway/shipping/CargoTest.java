@@ -51,13 +51,14 @@ public class CargoTest {
 						new Leg(VOYAGE, midpoint, destination, hour(3), hour(4)))).get();
 	}
 
+	/** A handling landed as given, then the inspection that shows it to the cargo. */
 	private static Shipping handled(Shipping s, String trackingId, int hour, HandlingType type, String location) {
-		return s.withHandlingEvent(trackingId, type, location, hour(hour), hour(hour));
+		return s.withHandlingEvent(trackingId, type, location, hour(hour), hour(hour)).inspectCargo(trackingId).get();
 	}
 
 	private static Shipping handled(Shipping s, String trackingId, int hour, HandlingType type, String location,
 			String voyage) {
-		return s.withHandlingEvent(trackingId, type, location, voyage, hour(hour), hour(hour));
+		return s.withHandlingEvent(trackingId, type, location, voyage, hour(hour), hour(hour)).inspectCargo(trackingId).get();
 	}
 
 	// -- construction -----------------------------------------------------

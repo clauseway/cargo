@@ -13,8 +13,6 @@ import java.util.Optional;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
-import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.cargo.Routing;
 import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
@@ -40,8 +38,7 @@ public class RegistrationTest {
 		Transaction db = Transaction.recording(SharedDatabase.empty().open("direct"));
 		Locations locations = new Locations(db);
 		Voyages voyages = new Voyages(db);
-		Itinerary itinerary = new Itinerary(db);
-		Cargo cargo = new Cargo(db, itinerary, new Routing(db, itinerary, voyages, locations));
+		Cargo cargo = new Cargo(db);
 		History history = new History(db, cargo, locations, voyages);
 		assertThat(history.register("ABC", RECEIVE, STOCKHOLM, Optional.empty(), hour(1), hour(2)).getCause())
 				.hasMessageContaining("unknown cargo");

@@ -1,10 +1,11 @@
 package org.clauseway.shipping.cargo;
 
-// ABOUTME: The Cargo aggregate root: the booking, its route specification and its
-// ABOUTME: itinerary as relations written here alone, read as rules and values, changed by commands that guard themselves.
+// ABOUTME: The Cargo aggregate root: the booking, its route specification, its itinerary and its
+// ABOUTME: delivery as relations written here alone, read as rules and values, changed by commands that guard themselves.
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.shipping.Reads.values;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -15,30 +16,40 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import lombok.Getter;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
-import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
+import org.clauseway.shipping.Delivery;
+import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.RouteSpecification;
 import org.clauseway.shipping.Schema;
+import org.clauseway.shipping.location.Locations;
+import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
 
 public final class Cargo {
 
 	private final Transaction db;
+	@Getter
 	private final Itinerary itinerary;
+	@Getter
 	private final Routing routing;
+	@Getter
+	private final Progress progress;
 
-	public Cargo(Transaction db, Itinerary itinerary, Routing routing) {
+	/** The aggregate over one transaction value: its rules, and the rules they read, bound to it. */
+	public Cargo(Transaction db) {
 		this.db = db;
-		this.itinerary = itinerary;
-		this.routing = routing;
+		this.itinerary = new Itinerary(db);
+		this.routing = new Routing(db, itinerary, new Voyages(db), new Locations(db));
+		this.progress = new Progress(db, itinerary, routing);
 	}
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
@@ -75,11 +86,11 @@ public final class Cargo {
 				.from(db);
 	}
 
-	/** The aggregate on a SQL source: the deadline and the legs' times as timestamps. */
+	/** The aggregate on a SQL source: the deadline and the legs' times as timestamps, and the delivery's encodings. */
 	public static SerializableSource onSql(SerializableSource source) {
-		return source
+		return Progress.onSql(source
 				.withCodec(routeSpecification(null, lvar(), lvar(), lvar(), Schema.INSTANT.arg()))
-				.withCodec(leg(null, lvar(), lvar(), lvar(), lvar(), lvar(), Schema.INSTANT.arg(), Schema.INSTANT.arg()));
+				.withCodec(leg(null, lvar(), lvar(), lvar(), lvar(), lvar(), Schema.INSTANT.arg(), Schema.INSTANT.arg())));
 	}
 
 	// -- the read face: what other aggregates and the tracking may see ------
@@ -152,6 +163,11 @@ public final class Cargo {
 				.findFirst();
 	}
 
+	/** The cargo's delivery as it last derived it. */
+	public Optional<Delivery> deliveryOf(String trackingId) {
+		return progress.stored(trackingId);
+	}
+
 	/** The variables of one leg's columns and the row-to-value reading over them. */
 	private static final class LegColumns {
 		final Unifiable<String> voyageNumber = lvar();
@@ -180,8 +196,13 @@ public final class Cargo {
 		return reasons(reason -> routing.reroutingDenial(lval(trackingId), lval(origin), lval(destination), reason));
 	}
 
+	/** The denial every command on a cargo that is not booked gets. */
+	private List<String> bookedDenials(String trackingId) {
+		return reasons(reason -> routing.routingDenial(lval(trackingId), reason));
+	}
+
 	private List<String> routingDenials(String trackingId, List<Leg> legs) {
-		Stream<String> booked = reasons(reason -> routing.routingDenial(lval(trackingId), reason)).stream();
+		Stream<String> booked = bookedDenials(trackingId).stream();
 		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
 		Stream<String> parts = legs.stream().flatMap(leg -> reasons(reason -> routing.legDenial(
 				lval(leg.getVoyageNumber()), lval(leg.getLoadLocation()), lval(leg.getUnloadLocation()), reason)).stream());
@@ -191,16 +212,16 @@ public final class Cargo {
 	/** Every reason a denial rule gives. */
 	private static List<String> reasons(Function<Unifiable<String>, Literal> denial) {
 		Unifiable<String> reason = lvar();
-		return Query.of(denial.apply(reason)).solve(reason).map(Reified::get).collect(Collectors.toList());
+		return values(denial.apply(reason), reason);
 	}
 
-	// -- the commands: each refused by name, or its facts landed -------------
+	// -- the commands: each refused by name, or its facts landed and the delivery re-derived -------------
 
-	/** Booking: the cargo exists, with its origin and its first requirement. */
+	/** Booking: the cargo exists, with its origin, its first requirement and its first delivery. */
 	public Try<Transaction> book(String trackingId, String origin, String destination, Instant arrivalDeadline) {
-		return Command.guarded(bookingDenials(trackingId, origin, destination), () -> db.asserting(
+		return Command.guarded(bookingDenials(trackingId, origin, destination), () -> delivered(trackingId, db.asserting(
 				cargo(db, lval(trackingId), lval(origin)),
-				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))));
+				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline)))));
 	}
 
 	/** Cargo.specifyNewRoute. The specification is a value: the old one goes whole, the new one lands, the same one is nothing; the cargo's origin stays. */
@@ -211,9 +232,9 @@ public final class Cargo {
 			if (current.filter(next::equals).isPresent()) {
 				return db;
 			}
-			List<Literal> spent = current.map(old -> specified(db, trackingId, old))
-					.map(Collections::singletonList).orElse(Collections.emptyList());
-			return db.retracting(spent).asserting(specified(db, trackingId, next));
+			return delivered(trackingId, db
+					.retracting(rows(current.map(old -> specified(db, trackingId, old))))
+					.asserting(specified(db, trackingId, next)));
 		});
 	}
 
@@ -221,9 +242,35 @@ public final class Cargo {
 	public Try<Transaction> route(String trackingId, List<Leg> legs) {
 		return Command.guarded(routingDenials(trackingId, legs), () -> {
 			List<Leg> current = itineraryOf(trackingId);
-			return db.retracting(legsDiffering(db, trackingId, current, legs))
-					.asserting(legsDiffering(db, trackingId, legs, current));
+			return delivered(trackingId, db
+					.retracting(legsDiffering(db, trackingId, current, legs))
+					.asserting(legsDiffering(db, trackingId, legs, current)));
 		});
+	}
+
+	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
+	public Try<Transaction> inspect(String trackingId, Optional<HandlingEvent> latest) {
+		return Command.guarded(bookedDenials(trackingId), () -> {
+			Optional<HandlingEvent> shown = progress.lastHandlingOf(trackingId);
+			if (shown.equals(latest)) {
+				return db;
+			}
+			return delivered(trackingId, db
+					.retracting(rows(shown.map(event -> Progress.shown(db, trackingId, event))))
+					.asserting(rows(latest.map(event -> Progress.shown(db, trackingId, event)))));
+		});
+	}
+
+	/** Every command's last step: the delivery derived over the staged state replaces the stored one, when it differs. */
+	private Transaction delivered(String trackingId, Transaction staged) {
+		Delivery next = new Cargo(staged).progress.derived(trackingId);
+		Optional<Delivery> current = progress.stored(trackingId);
+		if (current.filter(next::equals).isPresent()) {
+			return staged;
+		}
+		return staged
+				.retracting(rows(current.map(delivery -> Progress.row(db, trackingId, delivery))))
+				.asserting(Progress.row(db, trackingId, next));
 	}
 
 	/** The cargo specified as given, as a fact. */
@@ -240,5 +287,10 @@ public final class Cargo {
 						lval(legs.get(i).getLoadLocation()), lval(legs.get(i).getUnloadLocation()),
 						lval(legs.get(i).getLoadTime()), lval(legs.get(i).getUnloadTime())))
 				.collect(Collectors.toList());
+	}
+
+	/** A fact that may be absent, as the list a write door takes. */
+	private static List<Literal> rows(Optional<Literal> fact) {
+		return fact.map(Collections::singletonList).orElse(Collections.emptyList());
 	}
 }

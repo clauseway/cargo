@@ -22,7 +22,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.sql.Codec;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
@@ -34,9 +33,6 @@ import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
 
 public final class History {
-
-	private static final Codec<HandlingType> HANDLING_TYPE = Codec.of(HandlingType.class, String.class, Enum::name, HandlingType::valueOf);
-	private static final Codec<LOption<String>> OPTIONAL_VOYAGE = Codec.optional(String.class);
 
 	private final Transaction db;
 	private final Cargo cargo;
@@ -71,7 +67,7 @@ public final class History {
 
 	/** The aggregate on a SQL source: the handling kind by name, the absent voyage as NULL, the times as timestamps. */
 	public static SerializableSource onSql(SerializableSource source) {
-		return source.withCodec(handlingEvent(null, lvar(), HANDLING_TYPE.arg(), lvar(), OPTIONAL_VOYAGE.arg(),
+		return source.withCodec(handlingEvent(null, lvar(), Schema.HANDLING_TYPE.arg(), lvar(), Schema.OPTIONAL_STRING.arg(),
 				Schema.INSTANT.arg(), Schema.INSTANT.arg()));
 	}
 

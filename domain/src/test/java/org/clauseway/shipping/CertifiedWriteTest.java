@@ -62,12 +62,13 @@ public class CertifiedWriteTest {
 	}
 
 	/**
-	 * A route assigned without reading the specification stood on nothing
-	 * the other party moved: both commits land, and the status derived from
-	 * the two facts says what happened. There is no stored status to go stale.
+	 * A route assigned on a specification another party then replaced: the
+	 * delivery the command derived and stored read that specification, so the
+	 * commit is refused — the stale snapshot dddsample would save is never
+	 * written. Re-solved on the world as it is, the same route lands as misrouted.
 	 */
 	@Test
-	public void aRouteAssignedBlindLandsBesideTheNewSpecificationAsMisrouted() {
+	public void aRouteAssignedOnAReplacedSpecificationIsRefusedThenLandsAsMisrouted() {
 		SharedDatabase store = bookedStore();
 		Shipping routed = open(store, "route").assignToRoute("XYZ", Arrays.asList(
 				new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
@@ -76,7 +77,13 @@ public class CertifiedWriteTest {
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
 
-		assertThat(routed.commit().isSuccess()).isTrue();
+		Try<Nothing> refused = routed.commit();
+		assertThat(refused.isFailure()).isTrue();
+		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
+
+		assertThat(open(store, "route-again").assignToRoute("XYZ", Arrays.asList(
+				new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
+				new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(MISROUTED);
 	}
 

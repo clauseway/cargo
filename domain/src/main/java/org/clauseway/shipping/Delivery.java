@@ -1,7 +1,7 @@
 package org.clauseway.shipping;
 
-// ABOUTME: The actual transportation of a cargo as derived from its handling
-// ABOUTME: history, itinerary and route specification; nothing here is stored.
+// ABOUTME: The actual transportation of a cargo as it last derived it from its route
+// ABOUTME: specification, its itinerary and the handling it was shown; stored by the cargo's commands.
 
 import java.time.Instant;
 import java.util.Optional;

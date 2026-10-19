@@ -14,9 +14,6 @@ import org.clauseway.functional.Nothing;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
-import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.cargo.Progress;
-import org.clauseway.shipping.cargo.Routing;
 import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
@@ -31,14 +28,9 @@ public final class Shipping implements AutoCloseable {
 
 	private Shipping(Transaction db) {
 		this.db = db;
-		Locations locations = new Locations(db);
-		Voyages voyages = new Voyages(db);
-		Itinerary itinerary = new Itinerary(db);
-		Routing routing = new Routing(db, itinerary, voyages, locations);
-		this.cargo = new Cargo(db, itinerary, routing);
-		this.history = new History(db, cargo, locations, voyages);
-		this.tracking = new Tracking(cargo, history, itinerary, routing,
-				new Progress(db, history, itinerary, routing));
+		this.cargo = new Cargo(db);
+		this.history = new History(db, cargo, new Locations(db), new Voyages(db));
+		this.tracking = new Tracking(cargo, history);
 	}
 
 	/** A private one-history world — the pure-value mode for tests and demos. */
@@ -134,5 +126,10 @@ public final class Shipping implements AutoCloseable {
 			Optional<String> voyageNumber, Instant completionTime, Instant registrationTime) {
 		return history.register(trackingId, type, location, voyageNumber, completionTime, registrationTime)
 				.map(Shipping::new);
+	}
+
+	/** CargoInspectionService.inspectCargo: the handling side's latest event for the cargo, handed to it. */
+	public Try<Shipping> inspectCargo(String trackingId) {
+		return cargo.inspect(trackingId, tracking.lastEventOf(trackingId)).map(Shipping::new);
 	}
 }
