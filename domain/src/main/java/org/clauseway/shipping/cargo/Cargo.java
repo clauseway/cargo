@@ -48,7 +48,7 @@ public final class Cargo {
 		this.db = db;
 		this.itinerary = new Itinerary(db);
 		this.routing = new Routing(db, itinerary, new Voyages(db), new Locations(db));
-		this.progress = new Progress(db, itinerary, routing);
+		this.progress = new Progress(db, routing, new Transport(db, itinerary, routing));
 	}
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
