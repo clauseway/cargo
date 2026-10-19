@@ -31,7 +31,7 @@ public final class Itinerary {
 	public Literal anyLeg(Unifiable<String> trackingId) {
 		return Literal.relation(Itinerary.class, "anyLeg")
 				.arg("trackingId", trackingId)
-				.solving(leg(db, trackingId, lvar(), lvar(), lvar(), lvar(), lvar(), lvar()));
+				.solving(leg(db, trackingId, projected(), projected(), projected(), projected(), projected(), projected()));
 	}
 
 	/** The itinerary's first leg: the one at index 0. */
@@ -54,7 +54,7 @@ public final class Itinerary {
 		return Literal.relation(Itinerary.class, "lastIndex")
 				.arg("trackingId", trackingId)
 				.arg("index", index)
-				.solving(leg(db, trackingId, index, lvar(), lvar(), lvar(), lvar(), lvar())
+				.solving(leg(db, trackingId, index, projected(), projected(), projected(), projected(), projected())
 						.and(Ints.addo(index, lval(1), next))
 						.and(exclude(leg(db, trackingId, next, projected(), projected(), projected(),
 								projected(), projected()))));
@@ -95,21 +95,21 @@ public final class Itinerary {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.solving(type.unifies(HandlingType.RECEIVE)
-						.and(firstLeg(trackingId, lvar(), location, lvar(), lvar(), lvar()))
+						.and(firstLeg(trackingId, projected(), location, projected(), projected(), projected()))
 						.and(step.unifies(0))
 						.and(voyageNumber.unifies(none()))
 						.or(type.unifies(HandlingType.LOAD)
-								.and(leg(db, trackingId, index, legVoyage, location, lvar(), lvar(), lvar()))
+								.and(leg(db, trackingId, index, legVoyage, location, projected(), projected(), projected()))
 								.and(voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(1), step)))
 						.or(type.unifies(HandlingType.UNLOAD)
-								.and(leg(db, trackingId, index, legVoyage, lvar(), location, lvar(), lvar()))
+								.and(leg(db, trackingId, index, legVoyage, projected(), location, projected(), projected()))
 								.and(voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(2), step)))
 						.or(type.unifies(HandlingType.CLAIM)
-								.and(leg(db, trackingId, index, lvar(), lvar(), location, lvar(), lvar()))
+								.and(leg(db, trackingId, index, projected(), projected(), location, projected(), projected()))
 								.and(lastIndex(trackingId, index))
 								.and(Ints.multo(index, lval(2), twice))
 								.and(Ints.addo(twice, lval(3), step))
@@ -128,7 +128,7 @@ public final class Itinerary {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.solving(exclude(anyLeg(trackingId))
-						.or(plannedHandling(trackingId, lvar(), type, location, voyageNumber))
+						.or(plannedHandling(trackingId, projected(), type, location, voyageNumber))
 						.or(type.unifies(HandlingType.CUSTOMS)));
 	}
 }

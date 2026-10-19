@@ -122,8 +122,8 @@ public final class Routing {
 		return Literal.relation(Routing.class, "satisfied")
 				.arg("trackingId", trackingId)
 				.solving(routeSpecification(db, trackingId, origin, destination, deadline)
-						.and(itinerary.firstLeg(trackingId, lvar(), origin, lvar(), lvar(), lvar()))
-						.and(itinerary.lastLeg(trackingId, lvar(), lvar(), destination, lvar(), finalArrival))
+						.and(itinerary.firstLeg(trackingId, projected(), origin, projected(), projected(), projected()))
+						.and(itinerary.lastLeg(trackingId, projected(), projected(), destination, projected(), finalArrival))
 						.and(Instants.lss(finalArrival, deadline)));
 	}
 

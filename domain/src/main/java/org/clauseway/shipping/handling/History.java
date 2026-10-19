@@ -10,6 +10,7 @@ import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -73,14 +74,14 @@ public final class History {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("completed", completed)
-				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, lvar()));
+				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, projected()));
 	}
 
 	/** The cargo has been handled at all. */
 	public Literal anyEvent(Unifiable<String> trackingId) {
 		return Literal.relation(History.class, "anyEvent")
 				.arg("trackingId", trackingId)
-				.solving(handlingEvent(db, trackingId, lvar(), lvar(), lvar(), lvar(), lvar()));
+				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), projected(), projected()));
 	}
 
 	/** Some handling of the cargo completed after the given time. */
@@ -89,7 +90,7 @@ public final class History {
 		return Literal.relation(History.class, "later")
 				.arg("trackingId", trackingId)
 				.arg("time", time)
-				.solving(handlingEvent(db, trackingId, lvar(), lvar(), lvar(), completed, lvar())
+				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), completed, projected())
 						.and(Instants.lss(time, completed)));
 	}
 
@@ -144,7 +145,7 @@ public final class History {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("completed", completed)
-				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, lvar())
+				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, projected())
 						.and(exclude(later(trackingId, completed))));
 	}
 

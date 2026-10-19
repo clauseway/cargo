@@ -189,7 +189,7 @@ public final class Delivery {
 	private Literal handled(Unifiable<String> trackingId) {
 		return Literal.relation(Delivery.class, "handled")
 				.arg("trackingId", trackingId)
-				.solving(lastHandling(db, trackingId, lvar(), lvar(), lvar(), lvar()));
+				.solving(lastHandling(db, trackingId, projected(), projected(), projected(), projected()));
 	}
 
 	/** Not received until handled; afterwards, wherever the last handling left it. */
@@ -200,7 +200,7 @@ public final class Delivery {
 				.solving(exclude(handled(trackingId)).and(status.unifies(TransportStatus.NOT_RECEIVED))
 						.or(defer(() -> {
 							Unifiable<HandlingType> type = lvar();
-							return lastHandling(db, trackingId, type, lvar(), lvar(), lvar())
+							return lastHandling(db, trackingId, type, projected(), projected(), projected())
 									.and(transportOf(TRANSPORT, type, status));
 						})));
 	}
@@ -210,7 +210,7 @@ public final class Delivery {
 		return Literal.relation(Delivery.class, "lastKnownLocation")
 				.arg("trackingId", trackingId)
 				.arg("location", location)
-				.solving(lastHandling(db, trackingId, lvar(), location, lvar(), lvar()));
+				.solving(lastHandling(db, trackingId, projected(), location, projected(), projected()));
 	}
 
 	/** The voyage the cargo is aboard: the one it was last loaded onto, while loaded. */
@@ -218,7 +218,7 @@ public final class Delivery {
 		return Literal.relation(Delivery.class, "currentVoyage")
 				.arg("trackingId", trackingId)
 				.arg("voyageNumber", voyageNumber)
-				.solving(lastHandling(db, trackingId, lval(HandlingType.LOAD), lvar(), some(voyageNumber), lvar()));
+				.solving(lastHandling(db, trackingId, lval(HandlingType.LOAD), projected(), some(voyageNumber), projected()));
 	}
 
 	/** The last handling is one the itinerary does not account for. */
@@ -229,7 +229,7 @@ public final class Delivery {
 					Unifiable<HandlingType> type = lvar();
 					Unifiable<String> location = lvar();
 					Unifiable<LOption<String>> voyageNumber = lvar();
-					return lastHandling(db, trackingId, type, location, voyageNumber, lvar())
+					return lastHandling(db, trackingId, type, location, voyageNumber, projected())
 							.and(exclude(itinerary.expected(trackingId, type, location, voyageNumber)));
 				}));
 	}
@@ -248,7 +248,7 @@ public final class Delivery {
 				.arg("trackingId", trackingId)
 				.arg("time", time)
 				.solving(onTrack(trackingId)
-						.and(itinerary.lastLeg(trackingId, lvar(), lvar(), lvar(), lvar(), time)));
+						.and(itinerary.lastLeg(trackingId, projected(), projected(), projected(), projected(), time)));
 	}
 
 	/** The last handling was an unload at the specified destination. */
@@ -257,8 +257,8 @@ public final class Delivery {
 				.arg("trackingId", trackingId)
 				.solving(defer(() -> {
 					Unifiable<String> location = lvar();
-					return lastHandling(db, trackingId, lval(HandlingType.UNLOAD), location, lvar(), lvar())
-							.and(routeSpecification(db, trackingId, lvar(), location, lvar()));
+					return lastHandling(db, trackingId, lval(HandlingType.UNLOAD), location, projected(), projected())
+							.and(routeSpecification(db, trackingId, projected(), location, projected()));
 				}));
 	}
 
@@ -283,7 +283,7 @@ public final class Delivery {
 									Unifiable<LOption<String>> lastVoyage = lvar();
 									Unifiable<Integer> step = lvar();
 									Unifiable<Integer> next = lvar();
-									return lastHandling(db, trackingId, lastType, lastLocation, lastVoyage, lvar())
+									return lastHandling(db, trackingId, lastType, lastLocation, lastVoyage, projected())
 											.and(itinerary.plannedHandling(trackingId, step, lastType, lastLocation, lastVoyage))
 											.and(Ints.addo(step, lval(1), next))
 											.and(itinerary.plannedHandling(trackingId, next, type, location, voyageNumber));
@@ -352,9 +352,9 @@ public final class Delivery {
 		return Literal.relation(Delivery.class, "notice")
 				.arg("trackingId", trackingId)
 				.arg("notice", notice)
-				.solving(delivery(db, trackingId, lvar(), lvar(), lvar(), lvar(), lval(true), lvar(), lvar(), lvar(), lvar(), lvar())
+				.solving(delivery(db, trackingId, projected(), projected(), projected(), projected(), lval(true), projected(), projected(), projected(), projected(), projected())
 						.and(notice.unifies(Notice.MISDIRECTED))
-						.or(delivery(db, trackingId, lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lval(true))
+						.or(delivery(db, trackingId, projected(), projected(), projected(), projected(), projected(), projected(), projected(), projected(), projected(), lval(true))
 								.and(notice.unifies(Notice.ARRIVED))));
 	}
 }

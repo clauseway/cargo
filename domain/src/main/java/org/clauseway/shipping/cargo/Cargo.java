@@ -5,6 +5,7 @@ package org.clauseway.shipping.cargo;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.Reads.values;
 
 import java.time.Instant;
@@ -89,7 +90,7 @@ public final class Cargo {
 	public Literal known(Unifiable<String> trackingId) {
 		return Literal.relation(Cargo.class, "known")
 				.arg("trackingId", trackingId)
-				.solving(cargo(db, trackingId, lvar()));
+				.solving(cargo(db, trackingId, projected()));
 	}
 
 	// -- the parts, as values ----------------------------------------------
