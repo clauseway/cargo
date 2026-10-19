@@ -32,7 +32,7 @@ record Snapshot(String routingStatus, String transportStatus, Optional<String> l
 				d.isUnloadedAtDestination());
 	}
 
-	static Snapshot of(org.clauseway.shipping.Delivery d) {
+	static Snapshot of(org.clauseway.shipping.DeliveryDTO d) {
 		return new Snapshot(
 				d.getRoutingStatus().name(),
 				d.getTransportStatus().name(),

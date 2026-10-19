@@ -1,7 +1,7 @@
 package org.clauseway.shipping;
 
 // ABOUTME: The read face of the shipping domain — every derived fact as a Java
-// ABOUTME: value, one section per aggregate's rules: history, itinerary, routing, progress.
+// ABOUTME: value, one section per aggregate's rules: history, itinerary, routing, delivery.
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
@@ -24,7 +24,7 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.cargo.Progress;
+import org.clauseway.shipping.cargo.Delivery;
 import org.clauseway.shipping.cargo.Routing;
 import org.clauseway.shipping.handling.History;
 
@@ -34,14 +34,14 @@ public final class Tracking {
 	private final History history;
 	private final Itinerary itinerary;
 	private final Routing routing;
-	private final Progress progress;
+	private final Delivery delivery;
 
 	Tracking(Cargo cargo, History history) {
 		this.cargo = cargo;
 		this.history = history;
 		this.itinerary = cargo.getItinerary();
 		this.routing = cargo.getRouting();
-		this.progress = cargo.getProgress();
+		this.delivery = cargo.getDelivery();
 	}
 
 	// -- history: the handling events ---------------------------------------
@@ -144,12 +144,12 @@ public final class Tracking {
 				.collect(Collectors.toList());
 	}
 
-	// -- progress: the delivery and the inspection ----------------------------
+	// -- delivery: the stored row and the inspection ---------------------------
 
 	/** The cargo's delivery, as its commands last derived it. */
-	public Delivery deliveryOf(String trackingId) {
+	public DeliveryDTO deliveryOf(String trackingId) {
 		DeliveryColumns c = new DeliveryColumns();
-		return Query.of(progress.stored(lval(trackingId), c.routingStatus, c.transportStatus, c.lastKnownLocation,
+		return Query.of(delivery.stored(lval(trackingId), c.routingStatus, c.transportStatus, c.lastKnownLocation,
 						c.currentVoyage, c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination))
 				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
 						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
@@ -171,8 +171,8 @@ public final class Tracking {
 		final Unifiable<LOption<String>> nextVoyage = lvar();
 		final Unifiable<Boolean> unloadedAtDestination = lvar();
 
-		Delivery delivery(Row row) {
-			return new Delivery(
+		DeliveryDTO delivery(Row row) {
+			return new DeliveryDTO(
 					row.get(routingStatus).get(),
 					row.get(transportStatus).get(),
 					row.get(lastKnownLocation).get().toOptional(),
@@ -189,6 +189,6 @@ public final class Tracking {
 	/** The notices the cargo's delivery warrants now. */
 	public List<Notice> noticesOf(String trackingId) {
 		Unifiable<Notice> notice = lvar();
-		return values(progress.notice(lval(trackingId), notice), notice);
+		return values(delivery.notice(lval(trackingId), notice), notice);
 	}
 }

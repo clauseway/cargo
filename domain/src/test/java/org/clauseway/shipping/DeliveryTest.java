@@ -23,7 +23,7 @@ import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
 import org.junit.Test;
 
-public class ProgressTest {
+public class DeliveryTest {
 
 	private static final String SHANGHAI = "CNSHA";
 	private static final String ROTTERDAM = "NLRTM";
@@ -62,7 +62,7 @@ public class ProgressTest {
 		Unifiable<LOption<String>> nextLocation = lvar();
 		Unifiable<LOption<String>> nextVoyage = lvar();
 		Unifiable<Boolean> unloadedAtDestination = lvar();
-		List<Row> rows = Query.of(new Cargo(db).getProgress().calculated(lval("CARGO1"), routingStatus, transportStatus,
+		List<Row> rows = Query.of(new Cargo(db).getDelivery().calculated(lval("CARGO1"), routingStatus, transportStatus,
 						lastKnownLocation, currentVoyage, misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination))
 				.select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
 						nextType, nextLocation, nextVoyage, unloadedAtDestination).rows()
@@ -80,7 +80,7 @@ public class ProgressTest {
 		assertThat(row.get(nextVoyage).get().toOptional()).contains(VOYAGE);
 		assertThat(row.get(unloadedAtDestination).get()).isFalse();
 
-		assertThat(Shipping.over(db).tracking().deliveryOf("CARGO1")).isEqualTo(new Delivery(
+		assertThat(Shipping.over(db).tracking().deliveryOf("CARGO1")).isEqualTo(new DeliveryDTO(
 				RoutingStatus.ROUTED, TransportStatus.ONBOARD_CARRIER, Optional.of(SHANGHAI), Optional.of(VOYAGE),
 				false, Optional.of(hour(4)), Optional.of(new HandlingActivity(HandlingType.UNLOAD, ROTTERDAM, Optional.of(VOYAGE))),
 				false));
@@ -98,7 +98,7 @@ public class ProgressTest {
 		Unifiable<LOption<Instant>> eta = lvar();
 		Unifiable<LOption<HandlingType>> nextType = lvar();
 		Unifiable<Boolean> misdirected = lvar();
-		List<Row> rows = Query.of(new Cargo(db).getProgress().calculated(lval("CARGO1"), lvar(), lvar(),
+		List<Row> rows = Query.of(new Cargo(db).getDelivery().calculated(lval("CARGO1"), lvar(), lvar(),
 						lastKnownLocation, lvar(), misdirected, eta, nextType, lvar(), lvar(), lvar()))
 				.select(lastKnownLocation, misdirected, eta, nextType).rows()
 				.collect(java.util.stream.Collectors.toList());

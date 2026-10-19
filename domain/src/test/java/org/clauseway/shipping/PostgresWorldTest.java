@@ -145,7 +145,7 @@ public class PostgresWorldTest {
 		assertThat(open("inspect").inspectCargo("CARGO1").get().commit().isSuccess()).isTrue();
 
 		Shipping arrived = open("read");
-		assertThat(arrived.tracking().deliveryOf("CARGO1")).isEqualTo(new Delivery(
+		assertThat(arrived.tracking().deliveryOf("CARGO1")).isEqualTo(new DeliveryDTO(
 				RoutingStatus.ROUTED, TransportStatus.IN_PORT, Optional.of(GOTHENBURG), Optional.empty(),
 				false, Optional.of(hour(4)),
 				Optional.of(new HandlingActivity(HandlingType.CLAIM, GOTHENBURG, Optional.empty())), true));

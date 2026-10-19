@@ -1,14 +1,14 @@
 package org.clauseway.shipping;
 
-// ABOUTME: The actual transportation of a cargo as it last derived it from its route
-// ABOUTME: specification, its itinerary and the handling it was shown; stored by the cargo's commands.
+// ABOUTME: The cargo's delivery as the tracking reads it off the stored row: a plain value
+// ABOUTME: with every field of dddsample's Delivery except the last event and the clock.
 
 import java.time.Instant;
 import java.util.Optional;
 import lombok.Value;
 
 @Value
-public class Delivery {
+public class DeliveryDTO {
 	RoutingStatus routingStatus;
 	TransportStatus transportStatus;
 	Optional<String> lastKnownLocation;

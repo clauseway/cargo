@@ -59,7 +59,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(useCase.apply(open()).commit().isSuccess()).isTrue();
 	}
 
-	private Delivery delivery() {
+	private DeliveryDTO delivery() {
 		return open().tracking().deliveryOf(TRACKING_ID);
 	}
 

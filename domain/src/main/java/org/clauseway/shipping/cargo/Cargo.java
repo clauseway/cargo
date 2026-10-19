@@ -41,14 +41,14 @@ public final class Cargo {
 	@Getter
 	private final Routing routing;
 	@Getter
-	private final Progress progress;
+	private final Delivery delivery;
 
 	/** The aggregate over one transaction value: its rules, and the rules they read, bound to it. */
 	public Cargo(Transaction db) {
 		this.db = db;
 		this.itinerary = new Itinerary(db);
 		this.routing = new Routing(db, itinerary, new Voyages(db), new Locations(db));
-		this.progress = new Progress(db, routing, new Transport(db, itinerary, routing));
+		this.delivery = new Delivery(db, itinerary, routing);
 	}
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
@@ -87,7 +87,7 @@ public final class Cargo {
 
 	/** The aggregate on a SQL source: the deadline and the legs' times as timestamps, and the delivery's encodings. */
 	public static SerializableSource onSql(SerializableSource source) {
-		return Progress.onSql(source
+		return Delivery.onSql(source
 				.withCodec(routeSpecification(null, lvar(), lvar(), lvar(), Schema.INSTANT.arg()))
 				.withCodec(leg(null, lvar(), lvar(), lvar(), lvar(), lvar(), Schema.INSTANT.arg(), Schema.INSTANT.arg())));
 	}
@@ -245,8 +245,8 @@ public final class Cargo {
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId, Optional<HandlingEvent> latest) {
 		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
-				.retracting(progress.lastHandlingRows(trackingId))
-				.asserting(rows(latest.map(event -> Progress.shown(db, trackingId, event))))));
+				.retracting(delivery.lastHandlingRows(trackingId))
+				.asserting(rows(latest.map(event -> Delivery.shown(db, trackingId, event))))));
 	}
 
 	/**
@@ -255,8 +255,8 @@ public final class Cargo {
 	 */
 	private Transaction delivered(String trackingId, Transaction staged) {
 		return staged
-				.retracting(progress.deliveryRows(trackingId))
-				.asserting(new Cargo(staged).progress.calculatedRows(trackingId));
+				.retracting(delivery.storedRows(trackingId))
+				.asserting(new Cargo(staged).delivery.calculatedRows(trackingId));
 	}
 
 	/** The cargo specified as given, as a fact. */
