@@ -28,8 +28,6 @@ import org.clauseway.shipping.Command;
 import org.clauseway.shipping.HandlingEvent;
 import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.RouteSpecification;
-import org.clauseway.shipping.location.Locations;
-import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
 
 public final class Cargo {
@@ -46,7 +44,7 @@ public final class Cargo {
 	public Cargo(Transaction db) {
 		this.db = db;
 		this.itinerary = new Itinerary(db);
-		this.routing = new Routing(db, itinerary, new Voyages(db), new Locations(db));
+		this.routing = new Routing(db, itinerary);
 		this.delivery = new Delivery(db, itinerary, routing);
 	}
 

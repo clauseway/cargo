@@ -35,14 +35,10 @@ public final class Routing {
 
 	private final AnswerSource db;
 	private final Itinerary itinerary;
-	private final Voyages voyages;
-	private final Locations locations;
 
-	public Routing(AnswerSource db, Itinerary itinerary, Voyages voyages, Locations locations) {
+	public Routing(AnswerSource db, Itinerary itinerary) {
 		this.db = db;
 		this.itinerary = itinerary;
-		this.voyages = voyages;
-		this.locations = locations;
 	}
 
 	/** The RouteSpecification constructor's guard, and the ports it is made from: known, and not one and the same. */
@@ -52,9 +48,9 @@ public final class Routing {
 				.arg("origin", origin)
 				.arg("destination", destination)
 				.arg("reason", reason)
-				.solving(exclude(locations.known(origin))
+				.solving(exclude(Locations.known(db, origin))
 						.and(reason.unifies("unknown origin"))
-						.or(exclude(locations.known(destination))
+						.or(exclude(Locations.known(db, destination))
 								.and(reason.unifies("unknown destination")))
 						.or(origin.unifies(destination)
 								.and(reason.unifies("origin and destination are the same"))));
@@ -90,11 +86,11 @@ public final class Routing {
 				.arg("loadLocation", loadLocation)
 				.arg("unloadLocation", unloadLocation)
 				.arg("reason", reason)
-				.solving(exclude(voyages.known(voyageNumber))
+				.solving(exclude(Voyages.known(db, voyageNumber))
 						.and(reason.unifies("unknown voyage"))
-						.or(exclude(locations.known(loadLocation))
+						.or(exclude(Locations.known(db, loadLocation))
 								.and(reason.unifies("unknown load port")))
-						.or(exclude(locations.known(unloadLocation))
+						.or(exclude(Locations.known(db, unloadLocation))
 								.and(reason.unifies("unknown unload port"))));
 	}
 
@@ -152,7 +148,7 @@ public final class Routing {
 					Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> onward = lvar();
 					Unifiable<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>> leg =
 							lval(Tuple.of(voyageNumber, from, to, departure, arrival));
-					return voyages.aboard(voyageNumber, from, to, departure, arrival)
+					return Voyages.aboard(db, voyageNumber, from, to, departure, arrival)
 							.and(exclude(from.unifies(to)))
 							.and(matche(connection,
 									loption(Goal::success),

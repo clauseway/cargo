@@ -14,8 +14,6 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.handling.History;
-import org.clauseway.shipping.location.Locations;
-import org.clauseway.shipping.voyage.Voyages;
 import org.junit.Test;
 
 public class RegistrationTest {
@@ -36,10 +34,8 @@ public class RegistrationTest {
 	@Test
 	public void theHistoryRefusesAnUnknownCargoWithoutTheFacade() {
 		Transaction db = Transaction.recording(SharedDatabase.empty().open("direct"));
-		Locations locations = new Locations(db);
-		Voyages voyages = new Voyages(db);
 		Cargo cargo = new Cargo(db);
-		History history = new History(db, cargo, locations, voyages);
+		History history = new History(db, cargo);
 		assertThat(history.register("ABC", RECEIVE, STOCKHOLM, hour(1), hour(2)).getCause())
 				.hasMessageContaining("unknown cargo");
 	}

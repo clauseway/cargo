@@ -16,12 +16,6 @@ import org.clauseway.pldb.transaction.Transaction;
 
 public final class Voyages {
 
-	private final AnswerSource db;
-
-	public Voyages(AnswerSource db) {
-		this.db = db;
-	}
-
 	/** A voyage, by number; its schedule is the carrier movements naming it. */
 	static Literal voyage(AnswerSource db, Unifiable<String> voyageNumber) {
 		return Literal.relation(Voyages.class, "voyage")
@@ -43,7 +37,7 @@ public final class Voyages {
 	}
 
 	/** The voyage is known. */
-	public Literal known(Unifiable<String> voyageNumber) {
+	public static Literal known(AnswerSource db, Unifiable<String> voyageNumber) {
 		return Literal.relation(Voyages.class, "known")
 				.arg("voyageNumber", voyageNumber)
 				.solving(voyage(db, voyageNumber));
@@ -54,7 +48,7 @@ public final class Voyages {
 	 * the voyage reaches by consecutive sailings — each leaving the port the
 	 * previous one landed at, no earlier than it landed.
 	 */
-	public Literal aboard(Unifiable<String> voyageNumber, Unifiable<String> loadLocation,
+	public static Literal aboard(AnswerSource db, Unifiable<String> voyageNumber, Unifiable<String> loadLocation,
 			Unifiable<String> unloadLocation, Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
 		return Literal.relation(Voyages.class, "aboard")
 				.arg("voyageNumber", voyageNumber)
@@ -68,7 +62,7 @@ public final class Voyages {
 							Unifiable<Instant> landed = lvar();
 							Unifiable<Instant> sailsOn = lvar();
 							return carrierMovement(db, voyageNumber, loadLocation, port, loadTime, landed)
-									.and(aboard(voyageNumber, port, unloadLocation, sailsOn, unloadTime))
+									.and(aboard(db, voyageNumber, port, unloadLocation, sailsOn, unloadTime))
 									.and(Instants.leq(landed, sailsOn));
 						})));
 	}

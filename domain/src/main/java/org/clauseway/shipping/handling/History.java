@@ -36,14 +36,10 @@ public final class History {
 
 	private final Transaction db;
 	private final Cargo cargo;
-	private final Locations locations;
-	private final Voyages voyages;
 
-	public History(Transaction db, Cargo cargo, Locations locations, Voyages voyages) {
+	public History(Transaction db, Cargo cargo) {
 		this.db = db;
 		this.cargo = cargo;
-		this.locations = locations;
-		this.voyages = voyages;
 	}
 
 	/**
@@ -125,14 +121,14 @@ public final class History {
 				.arg("reason", reason)
 				.solving(exclude(cargo.known(trackingId))
 						.and(reason.unifies("unknown cargo"))
-						.or(exclude(locations.known(location))
+						.or(exclude(Locations.known(db, location))
 								.and(reason.unifies("unknown location")))
 						.or(matche(voyageNumber,
 								loption(() -> handlingKind(HANDLING_KINDS, type, lval(true))
 										.and(reason.unifies("voyage required"))),
 								loption(named -> handlingKind(HANDLING_KINDS, type, lval(false))
 										.and(reason.unifies("voyage prohibited"))
-										.or(exclude(voyages.known(named))
+										.or(exclude(Voyages.known(db, named))
 												.and(reason.unifies("unknown voyage")))))));
 	}
 

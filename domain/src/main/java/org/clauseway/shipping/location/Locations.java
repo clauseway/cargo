@@ -13,12 +13,6 @@ import org.clauseway.pldb.transaction.Transaction;
 
 public final class Locations {
 
-	private final AnswerSource db;
-
-	public Locations(AnswerSource db) {
-		this.db = db;
-	}
-
 	/** A port, by UN/LOCODE. */
 	static Literal location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
 		return Literal.relation(Locations.class, "location")
@@ -28,7 +22,7 @@ public final class Locations {
 	}
 
 	/** The port is known. */
-	public Literal known(Unifiable<String> unlocode) {
+	public static Literal known(AnswerSource db, Unifiable<String> unlocode) {
 		return Literal.relation(Locations.class, "known")
 				.arg("unlocode", unlocode)
 				.solving(location(db, unlocode, projected()));

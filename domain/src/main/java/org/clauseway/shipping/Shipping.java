@@ -28,7 +28,7 @@ public final class Shipping implements AutoCloseable {
 	private Shipping(Transaction db) {
 		this.db = db;
 		this.cargo = new Cargo(db);
-		this.history = new History(db, cargo, new Locations(db), new Voyages(db));
+		this.history = new History(db, cargo);
 		this.tracking = new Tracking(cargo, history);
 	}
 
