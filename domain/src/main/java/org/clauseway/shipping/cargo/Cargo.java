@@ -16,16 +16,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import org.clauseway.logic.solving.Answer;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.relations.Question;
-import org.clauseway.pldb.relations.Relation;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.DeliveryDTO;
@@ -129,7 +125,7 @@ public final class Cargo {
 
 	/** The cargo's delivery as its commands last stored it. */
 	public DeliveryDTO deliveryOf(String trackingId) {
-		return Delivery.select(Delivery.fresh(lval(trackingId)).stored(db))
+		return Delivery.fresh(lval(trackingId)).stored(db).select(Delivery.class)
 				.map(Delivery::toDto)
 				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
@@ -218,14 +214,14 @@ public final class Cargo {
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId, HandlingEvent latest) {
 		return Command.guarded(bookedDenials(trackingId), () -> Delivery.refresh(db
-				.retracting(lastHandlingRows(db, trackingId))
+				.clearing(anyHandling(db, trackingId))
 				.asserting(shown(db, trackingId, latest)), trackingId));
 	}
 
 	/** The inspection of a cargo the handling side has nothing for: it keeps no handling and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId) {
 		return Command.guarded(bookedDenials(trackingId), () -> Delivery.refresh(db
-				.retracting(lastHandlingRows(db, trackingId)), trackingId));
+				.clearing(anyHandling(db, trackingId)), trackingId));
 	}
 
 	// -- the facts and rows the commands land and retract --------------------
@@ -252,19 +248,9 @@ public final class Cargo {
 				LOption.of(event.getVoyageNumber()), lval(event.getCompletionTime()));
 	}
 
-	/** The handling the cargo holds, as a retraction takes it. */
-	private static List<Answer<Relation>> lastHandlingRows(AnswerSource db, String trackingId) {
-		Unifiable<HandlingType> type = lvar();
-		Unifiable<String> location = lvar();
-		Unifiable<LOption<String>> voyageNumber = lvar();
-		Unifiable<Instant> completed = lvar();
-		return rows(lastHandling(db, lval(trackingId), type, location, voyageNumber, completed),
-				lastHandling(null, lval(trackingId), type, location, voyageNumber, completed));
-	}
-
-	/** The question's answers in the template's shape, as rows a write door takes. */
-	static List<Answer<Relation>> rows(Literal question, Literal template) {
-		return new BreadthFirstScheduler<>(Question.select(question, template)).get();
+	/** Whatever handling the cargo holds, as a clearing takes it. */
+	private static Literal anyHandling(AnswerSource db, String trackingId) {
+		return lastHandling(db, lval(trackingId), lvar(), lvar(), lvar(), lvar());
 	}
 
 	/** A fact that may be absent, as the list a write door takes. */
