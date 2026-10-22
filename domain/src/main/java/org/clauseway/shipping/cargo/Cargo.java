@@ -85,7 +85,7 @@ public final class Cargo {
 	// -- the read face: what other aggregates and the tracking may see ------
 
 	/** The cargo is booked. */
-	public Literal known(Unifiable<String> trackingId) {
+	public static Literal known(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(Cargo.class, "known")
 				.arg("trackingId", trackingId)
 				.solving(cargo(db, trackingId, projected()));

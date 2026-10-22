@@ -21,6 +21,7 @@ import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
+import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.Itinerary;
@@ -30,15 +31,15 @@ import org.clauseway.shipping.handling.History;
 
 public final class Tracking {
 
+	private final AnswerSource db;
 	private final Cargo cargo;
-	private final History history;
 	private final Itinerary itinerary;
 	private final Routing routing;
 	private final Delivery delivery;
 
-	Tracking(Cargo cargo, History history) {
+	Tracking(AnswerSource db, Cargo cargo) {
+		this.db = db;
 		this.cargo = cargo;
-		this.history = history;
 		this.itinerary = cargo.getItinerary();
 		this.routing = cargo.getRouting();
 		this.delivery = cargo.getDelivery();
@@ -49,7 +50,7 @@ public final class Tracking {
 	/** The cargo's handling events, distinct, in completion order. */
 	public List<HandlingEvent> handlingHistoryOf(String trackingId) {
 		EventColumns c = new EventColumns();
-		return c.events(c.select(history.event(lval(trackingId), c.type, c.location, c.voyageNumber, c.completed)))
+		return c.events(c.select(History.event(db, lval(trackingId), c.type, c.location, c.voyageNumber, c.completed)))
 				.sorted(Comparator.comparing(HandlingEvent::getCompletionTime))
 				.collect(Collectors.toList());
 	}
@@ -57,7 +58,7 @@ public final class Tracking {
 	/** The most recently completed handling of the cargo, if any. */
 	public Optional<HandlingEvent> lastEventOf(String trackingId) {
 		EventColumns c = new EventColumns();
-		return c.events(c.select(history.lastEvent(lval(trackingId), c.type, c.location, c.voyageNumber, c.completed)))
+		return c.events(c.select(History.lastEvent(db, lval(trackingId), c.type, c.location, c.voyageNumber, c.completed)))
 				.findFirst();
 	}
 

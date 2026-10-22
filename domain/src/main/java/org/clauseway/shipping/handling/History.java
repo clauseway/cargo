@@ -35,11 +35,9 @@ import org.clauseway.vavr.control.Try;
 public final class History {
 
 	private final Transaction db;
-	private final Cargo cargo;
 
-	public History(Transaction db, Cargo cargo) {
+	public History(Transaction db) {
 		this.db = db;
-		this.cargo = cargo;
 	}
 
 	/**
@@ -62,7 +60,7 @@ public final class History {
 	}
 
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
-	public Literal event(Unifiable<String> trackingId, Unifiable<HandlingType> type,
+	public static Literal event(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return Literal.relation(History.class, "event")
 				.arg("trackingId", trackingId)
@@ -74,14 +72,14 @@ public final class History {
 	}
 
 	/** The cargo has been handled at all. */
-	public Literal anyEvent(Unifiable<String> trackingId) {
+	public static Literal anyEvent(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(History.class, "anyEvent")
 				.arg("trackingId", trackingId)
 				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), projected(), projected()));
 	}
 
 	/** Some handling of the cargo completed after the given time. */
-	public Literal later(Unifiable<String> trackingId, Unifiable<Instant> time) {
+	public static Literal later(AnswerSource db, Unifiable<String> trackingId, Unifiable<Instant> time) {
 		Unifiable<Instant> completed = lvar();
 		return Literal.relation(History.class, "later")
 				.arg("trackingId", trackingId)
@@ -111,7 +109,7 @@ public final class History {
 	 * a known one, the others name none. Registration is allowed when there
 	 * are no denials.
 	 */
-	public Literal registrationDenial(Unifiable<String> trackingId, Unifiable<HandlingType> type,
+	public static Literal registrationDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<String> reason) {
 		return Literal.relation(History.class, "registrationDenial")
 				.arg("trackingId", trackingId)
@@ -119,7 +117,7 @@ public final class History {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("reason", reason)
-				.solving(exclude(cargo.known(trackingId))
+				.solving(exclude(Cargo.known(db, trackingId))
 						.and(reason.unifies("unknown cargo"))
 						.or(exclude(Locations.known(db, location))
 								.and(reason.unifies("unknown location")))
@@ -133,7 +131,7 @@ public final class History {
 	}
 
 	/** The most recently completed handling: an event with none later. */
-	public Literal lastEvent(Unifiable<String> trackingId, Unifiable<HandlingType> type,
+	public static Literal lastEvent(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return Literal.relation(History.class, "lastEvent")
 				.arg("trackingId", trackingId)
@@ -142,14 +140,14 @@ public final class History {
 				.arg("voyageNumber", voyageNumber)
 				.arg("completed", completed)
 				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, projected())
-						.and(exclude(later(trackingId, completed))));
+						.and(exclude(later(db, trackingId, completed))));
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */
 	private List<String> registrationDenials(String trackingId, HandlingType type, String location,
 			Unifiable<LOption<String>> voyageNumber) {
 		Unifiable<String> reason = lvar();
-		return Query.of(registrationDenial(lval(trackingId), lval(type), lval(location), voyageNumber, reason))
+		return Query.of(registrationDenial(db, lval(trackingId), lval(type), lval(location), voyageNumber, reason))
 				.solve(reason).map(Reified::get).collect(Collectors.toList());
 	}
 

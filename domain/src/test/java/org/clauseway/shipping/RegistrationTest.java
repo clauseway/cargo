@@ -12,7 +12,6 @@ import static org.clauseway.shipping.Refused.denials;
 import java.util.Optional;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
-import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.handling.History;
 import org.junit.Test;
 
@@ -34,8 +33,7 @@ public class RegistrationTest {
 	@Test
 	public void theHistoryRefusesAnUnknownCargoWithoutTheFacade() {
 		Transaction db = Transaction.recording(SharedDatabase.empty().open("direct"));
-		Cargo cargo = new Cargo(db);
-		History history = new History(db, cargo);
+		History history = new History(db);
 		assertThat(history.register("ABC", RECEIVE, STOCKHOLM, hour(1), hour(2)).getCause())
 				.hasMessageContaining("unknown cargo");
 	}
