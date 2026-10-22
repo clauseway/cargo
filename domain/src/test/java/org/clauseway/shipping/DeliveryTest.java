@@ -1,26 +1,22 @@
 package org.clauseway.shipping;
 
 // ABOUTME: Delivery.derivedFrom as one rule: the delivery row the cargo's rules
-// ABOUTME: calculate now is the row its commands store and the tracking reads back.
+// ABOUTME: derive now is the row its commands store and the tracking reads back.
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.logic.unification.terms.LVal.lval;
-import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.shipping.HandlingType.LOAD;
 import static org.clauseway.shipping.HandlingType.RECEIVE;
 import static org.clauseway.shipping.Hours.hour;
 
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Row;
-import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.logic.unification.terms.Unifiable;
+import java.util.stream.Collectors;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.CargoRules;
+import org.clauseway.shipping.cargo.DeliveryRow;
 import org.junit.Test;
 
 public class DeliveryTest {
@@ -49,63 +45,33 @@ public class DeliveryTest {
 	}
 
 	@Test
-	public void theCalculatedRowIsTheStoredDelivery() {
+	public void theDerivedRowIsTheStoredDelivery() {
 		SharedDatabase store = underway();
 		Transaction db = Transaction.recording(store.open("read"));
-		Unifiable<RoutingStatus> routingStatus = lvar();
-		Unifiable<TransportStatus> transportStatus = lvar();
-		Unifiable<LOption<String>> lastKnownLocation = lvar();
-		Unifiable<LOption<String>> currentVoyage = lvar();
-		Unifiable<Boolean> misdirected = lvar();
-		Unifiable<LOption<Instant>> eta = lvar();
-		Unifiable<LOption<HandlingType>> nextType = lvar();
-		Unifiable<LOption<String>> nextLocation = lvar();
-		Unifiable<LOption<String>> nextVoyage = lvar();
-		Unifiable<Boolean> unloadedAtDestination = lvar();
-		List<Row> rows = Query.of(CargoRules.calculated(db, lval("CARGO1"), routingStatus, transportStatus,
-						lastKnownLocation, currentVoyage, misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination))
-				.select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
-						nextType, nextLocation, nextVoyage, unloadedAtDestination).rows()
-				.collect(java.util.stream.Collectors.toList());
-		assertThat(rows).hasSize(1);
-		Row row = rows.get(0);
-		assertThat(row.get(routingStatus).get()).isEqualTo(RoutingStatus.ROUTED);
-		assertThat(row.get(transportStatus).get()).isEqualTo(TransportStatus.ONBOARD_CARRIER);
-		assertThat(row.get(lastKnownLocation).get().toOptional()).contains(SHANGHAI);
-		assertThat(row.get(currentVoyage).get().toOptional()).contains(VOYAGE);
-		assertThat(row.get(misdirected).get()).isFalse();
-		assertThat(row.get(eta).get().toOptional()).contains(hour(4));
-		assertThat(row.get(nextType).get().toOptional()).contains(HandlingType.UNLOAD);
-		assertThat(row.get(nextLocation).get().toOptional()).contains(ROTTERDAM);
-		assertThat(row.get(nextVoyage).get().toOptional()).contains(VOYAGE);
-		assertThat(row.get(unloadedAtDestination).get()).isFalse();
-
-		assertThat(Shipping.over(db).tracking().deliveryOf("CARGO1")).isEqualTo(new DeliveryDTO(
+		DeliveryDTO underway = new DeliveryDTO(
 				RoutingStatus.ROUTED, TransportStatus.ONBOARD_CARRIER, Optional.of(SHANGHAI), Optional.of(VOYAGE),
 				false, Optional.of(hour(4)), Optional.of(new HandlingActivity(HandlingType.UNLOAD, ROTTERDAM, Optional.of(VOYAGE))),
-				false));
+				false);
+		assertThat(derived(db, "CARGO1")).containsExactly(underway);
+		assertThat(Shipping.over(db).tracking().deliveryOf("CARGO1")).isEqualTo(underway);
 	}
 
-	/** Before any handling, the partial fields are none and the next activity is the plan's first step. */
+	/** The rows the derived delivery answers for the cargo, as values. */
+	private static List<DeliveryDTO> derived(Transaction db, String trackingId) {
+		DeliveryRow row = DeliveryRow.fresh(lval(trackingId));
+		return row.select(CargoRules.derivedDelivery(db, row)).map(row::value).collect(Collectors.toList());
+	}
+
+	/** Booked and not routed: nothing is known, so every partial field is empty and both flags are off. */
 	@Test
-	public void theCalculatedRowSaysAbsenceAsNone() {
+	public void theDerivedRowSaysAbsenceAsEmpty() {
 		SharedDatabase store = SharedDatabase.empty();
 		Shipping s = SampleLocations.declaredIn(Shipping.over(Transaction.recording(store.open("seed"))))
 				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get();
 		assertThat(s.commit().isSuccess()).isTrue();
 		Transaction db = Transaction.recording(store.open("read"));
-		Unifiable<LOption<String>> lastKnownLocation = lvar();
-		Unifiable<LOption<Instant>> eta = lvar();
-		Unifiable<LOption<HandlingType>> nextType = lvar();
-		Unifiable<Boolean> misdirected = lvar();
-		List<Row> rows = Query.of(CargoRules.calculated(db, lval("CARGO1"), lvar(), lvar(),
-						lastKnownLocation, lvar(), misdirected, eta, nextType, lvar(), lvar(), lvar()))
-				.select(lastKnownLocation, misdirected, eta, nextType).rows()
-				.collect(java.util.stream.Collectors.toList());
-		assertThat(rows).hasSize(1);
-		assertThat(rows.get(0).get(lastKnownLocation).get().toOptional()).isEmpty();
-		assertThat(rows.get(0).get(misdirected).get()).isFalse();
-		assertThat(rows.get(0).get(eta).get().toOptional()).isEmpty();
-		assertThat(rows.get(0).get(nextType).get().toOptional()).isEmpty();
+		assertThat(derived(db, "CARGO1")).containsExactly(new DeliveryDTO(
+				RoutingStatus.NOT_ROUTED, TransportStatus.NOT_RECEIVED, Optional.empty(), Optional.empty(),
+				false, Optional.empty(), Optional.empty(), false));
 	}
 }

@@ -1,7 +1,7 @@
 package org.clauseway.shipping.cargo;
 
 // ABOUTME: The cargo's rules, static over any answer source: the itinerary's legs and the handlings it plans,
-// ABOUTME: the specification satisfied and the routes that would, the delivery calculated from the last handling shown.
+// ABOUTME: the specification satisfied and the routes that would, the delivery derived from the last handling shown.
 
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Matche.loption;
@@ -433,45 +433,30 @@ public final class CargoRules {
 	}
 
 	/**
-	 * Delivery.derivedFrom as one rule: the delivery row the rules give now.
-	 * The partial fields are reified to their columns — the value where the
-	 * rule holds, none where it does not — and the predicates to booleans;
-	 * the rules themselves stay partial for each other.
+	 * Delivery.derivedFrom as one rule: the delivery row the rules give now, in
+	 * the stored relation's shape. The partial fields are reified to their
+	 * columns — the value where the rule holds, none where it does not — and
+	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
-	public static Literal calculated(AnswerSource db, Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
-			Unifiable<TransportStatus> transportStatus, Unifiable<LOption<String>> lastKnownLocation,
-			Unifiable<LOption<String>> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<LOption<Instant>> eta,
-			Unifiable<LOption<HandlingType>> nextType, Unifiable<LOption<String>> nextLocation,
-			Unifiable<LOption<String>> nextVoyage, Unifiable<Boolean> unloadedAtDestination) {
-		return Literal.relation(CargoRules.class, "calculated")
-				.arg("trackingId", trackingId)
-				.arg("routingStatus", routingStatus)
-				.arg("transportStatus", transportStatus)
-				.arg("lastKnownLocation", lastKnownLocation)
-				.arg("currentVoyage", currentVoyage)
-				.arg("misdirected", misdirected)
-				.arg("eta", eta)
-				.arg("nextType", nextType)
-				.arg("nextLocation", nextLocation)
-				.arg("nextVoyage", nextVoyage)
-				.arg("unloadedAtDestination", unloadedAtDestination)
-				.solving(routingStatus(db, trackingId, routingStatus)
-						.and(transportStatus(db, trackingId, transportStatus))
-						.and(optional(location -> lastKnownLocation(db, trackingId, location), lastKnownLocation))
-						.and(optional(voyage -> currentVoyage(db, trackingId, voyage), currentVoyage))
-						.and(flag(misdirected(db, trackingId), misdirected))
-						.and(optional(time -> eta(db, trackingId, time), eta))
+	public static Literal derivedDelivery(AnswerSource db, DeliveryRow r) {
+		return r.columns(Literal.relation(CargoRules.class, "derivedDelivery"))
+				.solving(routingStatus(db, r.trackingId, r.routingStatus)
+						.and(transportStatus(db, r.trackingId, r.transportStatus))
+						.and(optional(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
+						.and(optional(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
+						.and(flag(misdirected(db, r.trackingId), r.misdirected))
+						.and(optional(time -> eta(db, r.trackingId, time), r.eta))
 						.and(defer(() -> {
 							Unifiable<HandlingType> type = lvar();
 							Unifiable<String> location = lvar();
-							return nextExpectedActivity(db, trackingId, type, location, nextVoyage)
-									.and(nextType.unifies(some(type)))
-									.and(nextLocation.unifies(some(location)));
-						}).or(exclude(nextExpectedActivity(db, trackingId, projected(), projected(), projected()))
-								.and(nextType.unifies(none()))
-								.and(nextLocation.unifies(none()))
-								.and(nextVoyage.unifies(none()))))
-						.and(flag(unloadedAtDestination(db, trackingId), unloadedAtDestination)));
+							return nextExpectedActivity(db, r.trackingId, type, location, r.nextVoyage)
+									.and(r.nextType.unifies(some(type)))
+									.and(r.nextLocation.unifies(some(location)));
+						}).or(exclude(nextExpectedActivity(db, r.trackingId, projected(), projected(), projected()))
+								.and(r.nextType.unifies(none()))
+								.and(r.nextLocation.unifies(none()))
+								.and(r.nextVoyage.unifies(none()))))
+						.and(flag(unloadedAtDestination(db, r.trackingId), r.unloadedAtDestination)));
 	}
 
 	/** A partial rule reified to a column: its value where it holds, none where it does not. */
@@ -492,9 +477,9 @@ public final class CargoRules {
 		return Literal.relation(CargoRules.class, "notice")
 				.arg("trackingId", trackingId)
 				.arg("notice", notice)
-				.solving(delivery(db, trackingId, projected(), projected(), projected(), projected(), lval(true), projected(), projected(), projected(), projected(), projected())
+				.solving(delivery(db, DeliveryRow.probe(trackingId).withMisdirected(lval(true)))
 						.and(notice.unifies(Notice.MISDIRECTED))
-						.or(delivery(db, trackingId, projected(), projected(), projected(), projected(), projected(), projected(), projected(), projected(), projected(), lval(true))
+						.or(delivery(db, DeliveryRow.probe(trackingId).withUnloadedAtDestination(lval(true)))
 								.and(notice.unifies(Notice.ARRIVED))));
 	}
 }
