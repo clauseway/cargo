@@ -129,9 +129,8 @@ public final class Cargo {
 
 	/** The cargo's delivery as its commands last stored it. */
 	public DeliveryDTO deliveryOf(String trackingId) {
-		Delivery row = Delivery.fresh(lval(trackingId));
-		return row.select(Delivery.stored(db, row))
-				.map(row::value)
+		return Delivery.select(Delivery.fresh(lval(trackingId)).stored(db))
+				.map(Delivery::toDto)
 				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}

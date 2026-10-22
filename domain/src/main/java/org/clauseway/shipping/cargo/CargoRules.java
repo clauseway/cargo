@@ -435,9 +435,9 @@ public final class CargoRules {
 		return Literal.relation(CargoRules.class, "notice")
 				.arg("trackingId", trackingId)
 				.arg("notice", notice)
-				.solving(Delivery.stored(db, Delivery.probe(trackingId).withMisdirected(lval(true)))
+				.solving(Delivery.probe(trackingId).withMisdirected(lval(true)).stored(db)
 						.and(notice.unifies(Notice.MISDIRECTED))
-						.or(Delivery.stored(db, Delivery.probe(trackingId).withUnloadedAtDestination(lval(true)))
+						.or(Delivery.probe(trackingId).withUnloadedAtDestination(lval(true)).stored(db)
 								.and(notice.unifies(Notice.ARRIVED))));
 	}
 }

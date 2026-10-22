@@ -38,6 +38,7 @@ import org.clauseway.shipping.HandlingActivity;
 import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.shipping.TransportStatus;
+import org.clauseway.vavr.collection.Array;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @With
@@ -87,8 +88,8 @@ public final class Delivery {
 	// -- the two faces: stored, and derived from the rules -------------------
 
 	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
-	static Literal stored(AnswerSource db, Delivery row) {
-		return row.columns(Literal.relation(Delivery.class, "delivery")).from(db);
+	Literal stored(AnswerSource db) {
+		return columns(Literal.relation(Delivery.class, "delivery")).from(db);
 	}
 
 	/**
@@ -97,8 +98,9 @@ public final class Delivery {
 	 * columns — the value where the rule holds, none where it does not — and
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
-	public static Literal derived(AnswerSource db, Delivery r) {
-		return r.columns(Literal.relation(Delivery.class, "derived"))
+	public Literal derived(AnswerSource db) {
+		Delivery r = this;
+		return columns(Literal.relation(Delivery.class, "derived"))
 				.solving(routingStatus(db, r.trackingId, r.routingStatus)
 						.and(transportStatus(db, r.trackingId, r.transportStatus))
 						.and(optional(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
@@ -140,28 +142,58 @@ public final class Delivery {
 	static Transaction refresh(Transaction staged, String trackingId) {
 		Delivery row = fresh(lval(trackingId));
 		return staged
-				.retracting(Cargo.rows(stored(staged, row), stored(null, row)))
-				.asserting(Cargo.rows(derived(staged, row), stored(null, row)));
+				.retracting(Cargo.rows(row.stored(staged), row.stored(null)))
+				.asserting(Cargo.rows(row.derived(staged), row.stored(null)));
 	}
 
-	/** The rows a literal over this shape answers. */
-	public Stream<Row> select(Literal delivery) {
-		return Query.of(delivery).select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
-				nextType, nextLocation, nextVoyage, unloadedAtDestination).rows();
+	/** The rows a literal over this shape answers, each a ground row: the variables are read off the literal's own columns. */
+	public static Stream<Delivery> select(Literal delivery) {
+		Delivery row = over(delivery.getArgs());
+		return Query.of(delivery)
+				.select(row.routingStatus, row.transportStatus, row.lastKnownLocation, row.currentVoyage, row.misdirected,
+						row.eta, row.nextType, row.nextLocation, row.nextVoyage, row.unloadedAtDestination)
+				.rows()
+				.map(row::ground);
 	}
 
-	/** One answered row as the value: absence as empty, the next activity from its three columns. */
-	public DeliveryDTO value(Row row) {
+	/** The row a literal was built from: its columns, in the order {@link #columns} applies them. */
+	private static Delivery over(Array<Unifiable<?>> columns) {
+		return new Delivery(column(columns, 0), column(columns, 1), column(columns, 2), column(columns, 3),
+				column(columns, 4), column(columns, 5), column(columns, 6), column(columns, 7), column(columns, 8),
+				column(columns, 9), column(columns, 10));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T> Unifiable<T> column(Array<Unifiable<?>> columns, int position) {
+		return (Unifiable<T>) columns.get(position);
+	}
+
+	/** This row with every column bound to what the answer holds at it. */
+	private Delivery ground(Row answer) {
+		return new Delivery(trackingId, lval(answer.get(routingStatus).get()), lval(answer.get(transportStatus).get()),
+				lval(answer.get(lastKnownLocation).get()), lval(answer.get(currentVoyage).get()),
+				lval(answer.get(misdirected).get()), lval(answer.get(eta).get()), lval(answer.get(nextType).get()),
+				lval(answer.get(nextLocation).get()), lval(answer.get(nextVoyage).get()),
+				lval(answer.get(unloadedAtDestination).get()));
+	}
+
+	/** A ground row as the value: absence as empty, the next activity from its three columns. */
+	public DeliveryDTO toDto() {
 		return new DeliveryDTO(
-				row.get(routingStatus).get(),
-				row.get(transportStatus).get(),
-				row.get(lastKnownLocation).get().toOptional(),
-				row.get(currentVoyage).get().toOptional(),
-				row.get(misdirected).get(),
-				row.get(eta).get().toOptional(),
-				row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
-						row.get(nextLocation).get().toOptional().get(),
-						row.get(nextVoyage).get().toOptional())),
-				row.get(unloadedAtDestination).get());
+				value(routingStatus),
+				value(transportStatus),
+				value(lastKnownLocation).toOptional(),
+				value(currentVoyage).toOptional(),
+				value(misdirected),
+				value(eta).toOptional(),
+				value(nextType).toOptional().map(type -> new HandlingActivity(type,
+						value(nextLocation).toOptional().get(),
+						value(nextVoyage).toOptional())),
+				value(unloadedAtDestination));
+	}
+
+	/** A ground column's value; a row that was not selected has none. */
+	private static <T> T value(Unifiable<T> column) {
+		return column.asVal().orElseThrow(() -> new IllegalStateException("not a ground row: " + column));
 	}
 }

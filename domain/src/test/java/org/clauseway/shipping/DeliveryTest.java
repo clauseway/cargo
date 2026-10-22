@@ -57,8 +57,7 @@ public class DeliveryTest {
 
 	/** The rows the derived delivery answers for the cargo, as values. */
 	private static List<DeliveryDTO> derived(Transaction db, String trackingId) {
-		Delivery row = Delivery.fresh(lval(trackingId));
-		return row.select(Delivery.derived(db, row)).map(row::value).collect(Collectors.toList());
+		return Delivery.select(Delivery.fresh(lval(trackingId)).derived(db)).map(Delivery::toDto).collect(Collectors.toList());
 	}
 
 	/** Booked and not routed: nothing is known, so every partial field is empty and both flags are off. */
