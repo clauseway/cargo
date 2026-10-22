@@ -154,9 +154,7 @@ public final class Cargo {
 	/** The cargo's delivery as its commands last stored it. */
 	public DeliveryDTO deliveryOf(String trackingId) {
 		DeliveryColumns c = new DeliveryColumns();
-		return Query.of(delivery(db, lval(trackingId), c))
-				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
-						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
+		return c.select(c.delivery(db, lval(trackingId)))
 				.map(c::delivery)
 				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
@@ -193,6 +191,11 @@ public final class Cargo {
 		final Unifiable<LOption<String>> nextVoyage = lvar();
 		final Unifiable<Boolean> unloadedAtDestination = lvar();
 
+		Stream<Row> select(Literal delivery) {
+			return Query.of(delivery).select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
+					nextType, nextLocation, nextVoyage, unloadedAtDestination).rows();
+		}
+
 		DeliveryDTO delivery(Row row) {
 			return new DeliveryDTO(
 					row.get(routingStatus).get(),
@@ -206,16 +209,16 @@ public final class Cargo {
 							row.get(nextVoyage).get().toOptional())),
 					row.get(unloadedAtDestination).get());
 		}
-	}
 
-	private static Literal calculated(AnswerSource db, Unifiable<String> trackingId, DeliveryColumns c) {
-		return CargoRules.calculated(db, trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
-				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
-	}
+		private Literal calculated(AnswerSource db, Unifiable<String> trackingId) {
+			return CargoRules.calculated(db, trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage,
+					misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination);
+		}
 
-	private static Literal delivery(AnswerSource db, Unifiable<String> trackingId, DeliveryColumns c) {
-		return delivery(db, trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
-				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+		private Literal delivery(AnswerSource db, Unifiable<String> trackingId) {
+			return Cargo.delivery(db, trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage,
+					misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination);
+		}
 	}
 
 	// -- the denials, by name; empty means allowed ---------------------------
@@ -330,13 +333,13 @@ public final class Cargo {
 	/** The delivery row the cargo holds, as a retraction takes it. */
 	private static List<Answer<Relation>> storedRows(AnswerSource db, String trackingId) {
 		DeliveryColumns c = new DeliveryColumns();
-		return rows(delivery(db, lval(trackingId), c), delivery(null, lval(trackingId), c));
+		return rows(c.delivery(db, lval(trackingId)), c.delivery(null, lval(trackingId)));
 	}
 
 	/** Delivery.derivedFrom: the delivery the rules calculate now, as the row to land. */
 	private static List<Answer<Relation>> calculatedRows(AnswerSource db, String trackingId) {
 		DeliveryColumns c = new DeliveryColumns();
-		return rows(calculated(db, lval(trackingId), c), delivery(null, lval(trackingId), c));
+		return rows(c.calculated(db, lval(trackingId)), c.delivery(null, lval(trackingId)));
 	}
 
 	/** The handling the cargo holds, as a retraction takes it. */
