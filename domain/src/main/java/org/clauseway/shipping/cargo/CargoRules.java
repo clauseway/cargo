@@ -1,7 +1,7 @@
 package org.clauseway.shipping.cargo;
 
 // ABOUTME: The cargo's rules, static over any answer source: the itinerary's legs and the handlings it plans,
-// ABOUTME: the specification satisfied and the routes that would, the delivery derived from the last handling shown.
+// ABOUTME: the specification satisfied and the routes that would, where the cargo is and what comes next.
 
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Matche.loption;
@@ -14,13 +14,11 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.cargo.Cargo.cargo;
-import static org.clauseway.shipping.cargo.Cargo.delivery;
 import static org.clauseway.shipping.cargo.Cargo.lastHandling;
 import static org.clauseway.shipping.cargo.Cargo.leg;
 import static org.clauseway.shipping.cargo.Cargo.routeSpecification;
 
 import java.time.Instant;
-import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.clauseway.functional.tuples.Tuple;
@@ -432,54 +430,14 @@ public final class CargoRules {
 								}))));
 	}
 
-	/**
-	 * Delivery.derivedFrom as one rule: the delivery row the rules give now, in
-	 * the stored relation's shape. The partial fields are reified to their
-	 * columns — the value where the rule holds, none where it does not — and
-	 * the predicates to booleans; the rules themselves stay partial for each other.
-	 */
-	public static Literal derivedDelivery(AnswerSource db, DeliveryRow r) {
-		return r.columns(Literal.relation(CargoRules.class, "derivedDelivery"))
-				.solving(routingStatus(db, r.trackingId, r.routingStatus)
-						.and(transportStatus(db, r.trackingId, r.transportStatus))
-						.and(optional(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
-						.and(optional(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
-						.and(flag(misdirected(db, r.trackingId), r.misdirected))
-						.and(optional(time -> eta(db, r.trackingId, time), r.eta))
-						.and(defer(() -> {
-							Unifiable<HandlingType> type = lvar();
-							Unifiable<String> location = lvar();
-							return nextExpectedActivity(db, r.trackingId, type, location, r.nextVoyage)
-									.and(r.nextType.unifies(some(type)))
-									.and(r.nextLocation.unifies(some(location)));
-						}).or(exclude(nextExpectedActivity(db, r.trackingId, projected(), projected(), projected()))
-								.and(r.nextType.unifies(none()))
-								.and(r.nextLocation.unifies(none()))
-								.and(r.nextVoyage.unifies(none()))))
-						.and(flag(unloadedAtDestination(db, r.trackingId), r.unloadedAtDestination)));
-	}
-
-	/** A partial rule reified to a column: its value where it holds, none where it does not. */
-	private static <T> Goal optional(Function<Unifiable<T>, Literal> rule, Unifiable<LOption<T>> column) {
-		return defer(() -> {
-			Unifiable<T> value = lvar();
-			return rule.apply(value).and(column.unifies(some(value)));
-		}).or(exclude(rule.apply(projected())).and(column.unifies(none())));
-	}
-
-	/** A predicate reified to a boolean column. */
-	private static Goal flag(Literal rule, Unifiable<Boolean> column) {
-		return rule.and(column.unifies(true)).or(exclude(rule).and(column.unifies(false)));
-	}
-
 	/** CargoInspectionService: the notices the stored delivery warrants — misdirected, arrived at its destination. */
 	public static Literal notice(AnswerSource db, Unifiable<String> trackingId, Unifiable<Notice> notice) {
 		return Literal.relation(CargoRules.class, "notice")
 				.arg("trackingId", trackingId)
 				.arg("notice", notice)
-				.solving(delivery(db, DeliveryRow.probe(trackingId).withMisdirected(lval(true)))
+				.solving(Delivery.stored(db, Delivery.probe(trackingId).withMisdirected(lval(true)))
 						.and(notice.unifies(Notice.MISDIRECTED))
-						.or(delivery(db, DeliveryRow.probe(trackingId).withUnloadedAtDestination(lval(true)))
+						.or(Delivery.stored(db, Delivery.probe(trackingId).withUnloadedAtDestination(lval(true)))
 								.and(notice.unifies(Notice.ARRIVED))));
 	}
 }

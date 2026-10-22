@@ -15,8 +15,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
-import org.clauseway.shipping.cargo.CargoRules;
-import org.clauseway.shipping.cargo.DeliveryRow;
+import org.clauseway.shipping.cargo.Delivery;
 import org.junit.Test;
 
 public class DeliveryTest {
@@ -58,8 +57,8 @@ public class DeliveryTest {
 
 	/** The rows the derived delivery answers for the cargo, as values. */
 	private static List<DeliveryDTO> derived(Transaction db, String trackingId) {
-		DeliveryRow row = DeliveryRow.fresh(lval(trackingId));
-		return row.select(CargoRules.derivedDelivery(db, row)).map(row::value).collect(Collectors.toList());
+		Delivery row = Delivery.fresh(lval(trackingId));
+		return row.select(Delivery.derived(db, row)).map(row::value).collect(Collectors.toList());
 	}
 
 	/** Booked and not routed: nothing is known, so every partial field is empty and both flags are off. */
