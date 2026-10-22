@@ -1,11 +1,10 @@
 package org.clauseway.shipping.cargo;
 
-// ABOUTME: The Cargo aggregate root: the booking, its route specification, its itinerary and its
-// ABOUTME: delivery as relations written here alone, read as rules and values, changed by commands that guard themselves.
+// ABOUTME: The Cargo aggregate root, the door Java calls: its relations package-private and written by its
+// ABOUTME: commands alone, its parts read as values, its delivery row derived by the rules and stored here.
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.Reads.values;
 
 import java.time.Instant;
@@ -17,36 +16,38 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import lombok.Getter;
+import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
+import org.clauseway.logic.solving.Answer;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Row;
+import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.Question;
+import org.clauseway.pldb.relations.Relation;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
+import org.clauseway.shipping.DeliveryDTO;
+import org.clauseway.shipping.HandlingActivity;
 import org.clauseway.shipping.HandlingEvent;
+import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.RouteSpecification;
+import org.clauseway.shipping.RoutingStatus;
+import org.clauseway.shipping.TransportStatus;
 import org.clauseway.vavr.control.Try;
 
 public final class Cargo {
 
 	private final Transaction db;
-	@Getter
-	private final Itinerary itinerary;
-	@Getter
-	private final Routing routing;
-	@Getter
-	private final Delivery delivery;
 
-	/** The aggregate over one transaction value: its rules, and the rules they read, bound to it. */
+	/** The aggregate over one transaction value. */
 	public Cargo(Transaction db) {
 		this.db = db;
-		this.itinerary = new Itinerary(db);
-		this.routing = new Routing(db, itinerary);
-		this.delivery = new Delivery(db, itinerary, routing);
 	}
+
+	// -- the essential state: five relations, this package's alone ---------
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
 	static Literal cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
@@ -82,13 +83,37 @@ public final class Cargo {
 				.from(db);
 	}
 
-	// -- the read face: what other aggregates and the tracking may see ------
+	/** The handling the cargo was last shown — Delivery.lastEvent; replaced when an inspection brings a later one. */
+	static Literal lastHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
+		return Literal.relation(Cargo.class, "lastHandling")
+				.arg("trackingId", trackingId).indexed()
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completed", completed)
+				.from(db);
+	}
 
-	/** The cargo is booked. */
-	public static Literal known(AnswerSource db, Unifiable<String> trackingId) {
-		return Literal.relation(Cargo.class, "known")
-				.arg("trackingId", trackingId)
-				.solving(cargo(db, trackingId, projected()));
+	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
+	static Literal delivery(AnswerSource db, Unifiable<String> trackingId, Unifiable<RoutingStatus> routingStatus,
+			Unifiable<TransportStatus> transportStatus, Unifiable<LOption<String>> lastKnownLocation,
+			Unifiable<LOption<String>> currentVoyage, Unifiable<Boolean> misdirected, Unifiable<LOption<Instant>> eta,
+			Unifiable<LOption<HandlingType>> nextType, Unifiable<LOption<String>> nextLocation,
+			Unifiable<LOption<String>> nextVoyage, Unifiable<Boolean> unloadedAtDestination) {
+		return Literal.relation(Cargo.class, "delivery")
+				.arg("trackingId", trackingId).indexed()
+				.arg("routingStatus", routingStatus)
+				.arg("transportStatus", transportStatus)
+				.arg("lastKnownLocation", lastKnownLocation)
+				.arg("currentVoyage", currentVoyage)
+				.arg("misdirected", misdirected)
+				.arg("eta", eta)
+				.arg("nextType", nextType)
+				.arg("nextLocation", nextLocation)
+				.arg("nextVoyage", nextVoyage)
+				.arg("unloadedAtDestination", unloadedAtDestination)
+				.from(db);
 	}
 
 	// -- the parts, as values ----------------------------------------------
@@ -116,14 +141,25 @@ public final class Cargo {
 
 	public Optional<Leg> firstLegOf(String trackingId) {
 		LegColumns c = new LegColumns();
-		return c.legs(c.select(itinerary.firstLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+		return c.legs(c.select(CargoRules.firstLeg(db, lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
 				.findFirst();
 	}
 
 	public Optional<Leg> lastLegOf(String trackingId) {
 		LegColumns c = new LegColumns();
-		return c.legs(c.select(itinerary.lastLeg(lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
+		return c.legs(c.select(CargoRules.lastLeg(db, lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
 				.findFirst();
+	}
+
+	/** The cargo's delivery as its commands last stored it. */
+	public DeliveryDTO deliveryOf(String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return Query.of(delivery(db, lval(trackingId), c))
+				.select(c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage, c.misdirected, c.eta,
+						c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination).rows()
+				.map(c::delivery)
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** The variables of one leg's columns and the row-to-value reading over them. */
@@ -144,25 +180,63 @@ public final class Cargo {
 		}
 	}
 
+	/** The variables of one delivery row's columns, shared between a question and its template, and the row-to-value reading over them. */
+	private static final class DeliveryColumns {
+		final Unifiable<RoutingStatus> routingStatus = lvar();
+		final Unifiable<TransportStatus> transportStatus = lvar();
+		final Unifiable<LOption<String>> lastKnownLocation = lvar();
+		final Unifiable<LOption<String>> currentVoyage = lvar();
+		final Unifiable<Boolean> misdirected = lvar();
+		final Unifiable<LOption<Instant>> eta = lvar();
+		final Unifiable<LOption<HandlingType>> nextType = lvar();
+		final Unifiable<LOption<String>> nextLocation = lvar();
+		final Unifiable<LOption<String>> nextVoyage = lvar();
+		final Unifiable<Boolean> unloadedAtDestination = lvar();
+
+		DeliveryDTO delivery(Row row) {
+			return new DeliveryDTO(
+					row.get(routingStatus).get(),
+					row.get(transportStatus).get(),
+					row.get(lastKnownLocation).get().toOptional(),
+					row.get(currentVoyage).get().toOptional(),
+					row.get(misdirected).get(),
+					row.get(eta).get().toOptional(),
+					row.get(nextType).get().toOptional().map(type -> new HandlingActivity(type,
+							row.get(nextLocation).get().toOptional().get(),
+							row.get(nextVoyage).get().toOptional())),
+					row.get(unloadedAtDestination).get());
+		}
+	}
+
+	private static Literal calculated(AnswerSource db, Unifiable<String> trackingId, DeliveryColumns c) {
+		return CargoRules.calculated(db, trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
+				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+	}
+
+	private static Literal delivery(AnswerSource db, Unifiable<String> trackingId, DeliveryColumns c) {
+		return delivery(db, trackingId, c.routingStatus, c.transportStatus, c.lastKnownLocation, c.currentVoyage,
+				c.misdirected, c.eta, c.nextType, c.nextLocation, c.nextVoyage, c.unloadedAtDestination);
+	}
+
 	// -- the denials, by name; empty means allowed ---------------------------
 
 	private List<String> bookingDenials(String trackingId, String origin, String destination) {
-		return reasons(reason -> routing.bookingDenial(lval(trackingId), lval(origin), lval(destination), reason));
+		return reasons(reason -> CargoRules.bookingDenial(db, lval(trackingId), lval(origin), lval(destination), reason));
 	}
 
 	private List<String> reroutingDenials(String trackingId, String origin, String destination) {
-		return reasons(reason -> routing.reroutingDenial(lval(trackingId), lval(origin), lval(destination), reason));
+		return reasons(reason -> CargoRules.reroutingDenial(db, lval(trackingId), lval(origin), lval(destination), reason));
 	}
 
 	/** The denial every command on a cargo that is not booked gets. */
 	private List<String> bookedDenials(String trackingId) {
-		return reasons(reason -> routing.routingDenial(lval(trackingId), reason));
+		return reasons(reason -> CargoRules.routingDenial(db, lval(trackingId), reason));
 	}
 
 	private List<String> routingDenials(String trackingId, List<Leg> legs) {
 		Stream<String> booked = bookedDenials(trackingId).stream();
 		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
-		Stream<String> parts = legs.stream().flatMap(leg -> reasons(reason -> routing.legDenial(
+		Stream<String> parts = legs.stream().flatMap(leg -> reasons(reason -> CargoRules.legDenial(db,
 				lval(leg.getVoyageNumber()), lval(leg.getLoadLocation()), lval(leg.getUnloadLocation()), reason)).stream());
 		return Stream.concat(booked, Stream.concat(shape, parts)).distinct().collect(Collectors.toList());
 	}
@@ -209,25 +283,27 @@ public final class Cargo {
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId, HandlingEvent latest) {
 		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
-				.retracting(delivery.lastHandlingRows(trackingId))
-				.asserting(Delivery.shown(db, trackingId, latest))));
+				.retracting(lastHandlingRows(db, trackingId))
+				.asserting(shown(db, trackingId, latest))));
 	}
 
 	/** The inspection of a cargo the handling side has nothing for: it keeps no handling and re-derives its delivery. */
 	public Try<Transaction> inspect(String trackingId) {
 		return Command.guarded(bookedDenials(trackingId), () -> delivered(trackingId, db
-				.retracting(delivery.lastHandlingRows(trackingId))));
+				.retracting(lastHandlingRows(db, trackingId))));
 	}
 
 	/**
 	 * Every command's last step: the stored delivery row leaves and the row the
 	 * rules calculate over the staged state lands; an unchanged one cancels to nothing.
 	 */
-	private Transaction delivered(String trackingId, Transaction staged) {
+	private static Transaction delivered(String trackingId, Transaction staged) {
 		return staged
-				.retracting(delivery.storedRows(trackingId))
-				.asserting(new Cargo(staged).delivery.calculatedRows(trackingId));
+				.retracting(storedRows(staged, trackingId))
+				.asserting(calculatedRows(staged, trackingId));
 	}
+
+	// -- the facts and rows the commands land and retract --------------------
 
 	/** The cargo specified as given, as a fact. */
 	private static Literal specified(AnswerSource db, String trackingId, RouteSpecification spec) {
@@ -243,6 +319,39 @@ public final class Cargo {
 						lval(legs.get(i).getLoadLocation()), lval(legs.get(i).getUnloadLocation()),
 						lval(legs.get(i).getLoadTime()), lval(legs.get(i).getUnloadTime())))
 				.collect(Collectors.toList());
+	}
+
+	/** A handling as the cargo keeps it, as a fact. */
+	private static Literal shown(AnswerSource db, String trackingId, HandlingEvent event) {
+		return lastHandling(db, lval(trackingId), lval(event.getType()), lval(event.getLocation()),
+				LOption.of(event.getVoyageNumber()), lval(event.getCompletionTime()));
+	}
+
+	/** The delivery row the cargo holds, as a retraction takes it. */
+	private static List<Answer<Relation>> storedRows(AnswerSource db, String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return rows(delivery(db, lval(trackingId), c), delivery(null, lval(trackingId), c));
+	}
+
+	/** Delivery.derivedFrom: the delivery the rules calculate now, as the row to land. */
+	private static List<Answer<Relation>> calculatedRows(AnswerSource db, String trackingId) {
+		DeliveryColumns c = new DeliveryColumns();
+		return rows(calculated(db, lval(trackingId), c), delivery(null, lval(trackingId), c));
+	}
+
+	/** The handling the cargo holds, as a retraction takes it. */
+	private static List<Answer<Relation>> lastHandlingRows(AnswerSource db, String trackingId) {
+		Unifiable<HandlingType> type = lvar();
+		Unifiable<String> location = lvar();
+		Unifiable<LOption<String>> voyageNumber = lvar();
+		Unifiable<Instant> completed = lvar();
+		return rows(lastHandling(db, lval(trackingId), type, location, voyageNumber, completed),
+				lastHandling(null, lval(trackingId), type, location, voyageNumber, completed));
+	}
+
+	/** The question's answers in the template's shape, as rows a write door takes. */
+	private static List<Answer<Relation>> rows(Literal question, Literal template) {
+		return new BreadthFirstScheduler<>(Question.select(question, template)).get();
 	}
 
 	/** A fact that may be absent, as the list a write door takes. */

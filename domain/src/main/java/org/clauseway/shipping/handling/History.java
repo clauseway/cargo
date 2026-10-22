@@ -27,7 +27,7 @@ import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.cargo.CargoRules;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
@@ -117,7 +117,7 @@ public final class History {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.arg("reason", reason)
-				.solving(exclude(Cargo.known(db, trackingId))
+				.solving(exclude(CargoRules.known(db, trackingId))
 						.and(reason.unifies("unknown cargo"))
 						.or(exclude(Locations.known(db, location))
 								.and(reason.unifies("unknown location")))

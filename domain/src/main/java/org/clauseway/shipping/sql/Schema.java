@@ -17,7 +17,6 @@ import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.shipping.TransportStatus;
 import org.clauseway.shipping.cargo.Cargo;
-import org.clauseway.shipping.cargo.Delivery;
 import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.voyage.Voyages;
 
@@ -64,14 +63,14 @@ public final class Schema {
 						.arg("loadTime", INSTANT.arg())
 						.arg("unloadTime", INSTANT.arg())
 						.from(null))
-				.withCodec(Literal.relation(Delivery.class, "lastHandling")
+				.withCodec(Literal.relation(Cargo.class, "lastHandling")
 						.arg("trackingId", lvar())
 						.arg("type", HANDLING_TYPE.arg())
 						.arg("location", lvar())
 						.arg("voyageNumber", OPTIONAL_STRING.arg())
 						.arg("completed", INSTANT.arg())
 						.from(null))
-				.withCodec(Literal.relation(Delivery.class, "delivery")
+				.withCodec(Literal.relation(Cargo.class, "delivery")
 						.arg("trackingId", lvar())
 						.arg("routingStatus", ROUTING_STATUS.arg())
 						.arg("transportStatus", TRANSPORT_STATUS.arg())

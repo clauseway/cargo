@@ -13,8 +13,6 @@ import java.util.List;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
-import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.location.Locations;
 import org.junit.Test;
 
 public class BookingTest {

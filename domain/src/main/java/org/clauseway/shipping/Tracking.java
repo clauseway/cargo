@@ -24,25 +24,17 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.shipping.cargo.Cargo;
-import org.clauseway.shipping.cargo.Itinerary;
-import org.clauseway.shipping.cargo.Delivery;
-import org.clauseway.shipping.cargo.Routing;
+import org.clauseway.shipping.cargo.CargoRules;
 import org.clauseway.shipping.handling.History;
 
 public final class Tracking {
 
 	private final AnswerSource db;
 	private final Cargo cargo;
-	private final Itinerary itinerary;
-	private final Routing routing;
-	private final Delivery delivery;
 
 	Tracking(AnswerSource db, Cargo cargo) {
 		this.db = db;
 		this.cargo = cargo;
-		this.itinerary = cargo.getItinerary();
-		this.routing = cargo.getRouting();
-		this.delivery = cargo.getDelivery();
 	}
 
 	// -- history: the handling events ---------------------------------------
@@ -98,7 +90,7 @@ public final class Tracking {
 	public List<HandlingActivity> planOf(String trackingId) {
 		Unifiable<Integer> step = lvar();
 		ActivityColumns c = new ActivityColumns();
-		return c.activities(Query.of(itinerary.plannedHandling(lval(trackingId), step, c.type, c.location, c.voyageNumber))
+		return c.activities(Query.of(CargoRules.plannedHandling(db, lval(trackingId), step, c.type, c.location, c.voyageNumber))
 				.select(step, c.type, c.location, c.voyageNumber).rows()
 				.sorted(Comparator.comparing((Row row) -> row.get(step).get())))
 				.collect(Collectors.toList());
@@ -106,7 +98,7 @@ public final class Tracking {
 
 	/** Whether the cargo's itinerary accounts for the handling. */
 	public boolean isExpected(String trackingId, HandlingEvent event) {
-		return holds(itinerary.expected(lval(trackingId), lval(event.getType()), lval(event.getLocation()),
+		return holds(CargoRules.expected(db, lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber())));
 	}
 
@@ -130,14 +122,14 @@ public final class Tracking {
 
 	public RoutingStatus routingStatusOf(String trackingId) {
 		Unifiable<RoutingStatus> status = lvar();
-		return first(routing.routingStatus(lval(trackingId), status), status)
+		return first(CargoRules.routingStatus(db, lval(trackingId), status), status)
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
 	}
 
 	/** The itineraries the schedule offers the cargo's specification. */
 	public List<List<Leg>> routeCandidatesOf(String trackingId) {
 		Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> legs = lvar();
-		return Query.of(routing.candidate(lval(trackingId), legs)).solve(legs)
+		return Query.of(CargoRules.candidate(db, lval(trackingId), legs)).solve(legs)
 				.map(route -> route.get().elements()
 						.map(leg -> leg.get())
 						.map(leg -> new Leg(leg._1.get(), leg._2.get(), leg._3.get(), leg._4.get(), leg._5.get()))
@@ -149,12 +141,12 @@ public final class Tracking {
 
 	/** The cargo's delivery, as its commands last stored it. */
 	public DeliveryDTO deliveryOf(String trackingId) {
-		return delivery.deliveryOf(trackingId);
+		return cargo.deliveryOf(trackingId);
 	}
 
 	/** The notices the cargo's delivery warrants now. */
 	public List<Notice> noticesOf(String trackingId) {
 		Unifiable<Notice> notice = lvar();
-		return values(delivery.notice(lval(trackingId), notice), notice);
+		return values(CargoRules.notice(db, lval(trackingId), notice), notice);
 	}
 }

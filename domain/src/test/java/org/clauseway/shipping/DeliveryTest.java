@@ -20,7 +20,7 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
-import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.cargo.CargoRules;
 import org.junit.Test;
 
 public class DeliveryTest {
@@ -62,7 +62,7 @@ public class DeliveryTest {
 		Unifiable<LOption<String>> nextLocation = lvar();
 		Unifiable<LOption<String>> nextVoyage = lvar();
 		Unifiable<Boolean> unloadedAtDestination = lvar();
-		List<Row> rows = Query.of(new Cargo(db).getDelivery().calculated(lval("CARGO1"), routingStatus, transportStatus,
+		List<Row> rows = Query.of(CargoRules.calculated(db, lval("CARGO1"), routingStatus, transportStatus,
 						lastKnownLocation, currentVoyage, misdirected, eta, nextType, nextLocation, nextVoyage, unloadedAtDestination))
 				.select(routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected, eta,
 						nextType, nextLocation, nextVoyage, unloadedAtDestination).rows()
@@ -98,7 +98,7 @@ public class DeliveryTest {
 		Unifiable<LOption<Instant>> eta = lvar();
 		Unifiable<LOption<HandlingType>> nextType = lvar();
 		Unifiable<Boolean> misdirected = lvar();
-		List<Row> rows = Query.of(new Cargo(db).getDelivery().calculated(lval("CARGO1"), lvar(), lvar(),
+		List<Row> rows = Query.of(CargoRules.calculated(db, lval("CARGO1"), lvar(), lvar(),
 						lastKnownLocation, lvar(), misdirected, eta, nextType, lvar(), lvar(), lvar()))
 				.select(lastKnownLocation, misdirected, eta, nextType).rows()
 				.collect(java.util.stream.Collectors.toList());
