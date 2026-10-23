@@ -1,6 +1,6 @@
 package org.clauseway.shipping.cargo;
 
-// ABOUTME: dddsample's Delivery as the cargo stores it: one row the rules derive, a shape both its faces are
+// ABOUTME: dddsample's Delivery as the cargo stores it: one row the rules derive, the row both its faces are
 // ABOUTME: built from — the stored relation and the derivation over the row — refreshed by the cargo's commands.
 
 import static org.clauseway.logic.goals.Goal.defer;
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Value;
 import lombok.With;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.structures.LOption;
@@ -34,7 +35,7 @@ import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Rows;
-import org.clauseway.pldb.relations.Shape;
+import org.clauseway.pldb.relations.Row;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.DeliveryDTO;
 import org.clauseway.shipping.HandlingActivity;
@@ -42,35 +43,35 @@ import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.RoutingStatus;
 import org.clauseway.shipping.TransportStatus;
 
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @With
-public final class Delivery implements Shape<Delivery> {
+@Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Delivery implements Row<Delivery> {
 
 	// -- the row: the key and the ten columns, as variables ------------------
+	Unifiable<String> trackingId;
+	Unifiable<RoutingStatus> routingStatus;
+	Unifiable<TransportStatus> transportStatus;
+	Unifiable<LOption<String>> lastKnownLocation;
+	Unifiable<LOption<String>> currentVoyage;
+	Unifiable<Boolean> misdirected;
+	Unifiable<LOption<Instant>> eta;
+	Unifiable<LOption<HandlingType>> nextType;
+	Unifiable<LOption<String>> nextLocation;
+	Unifiable<LOption<String>> nextVoyage;
+	Unifiable<Boolean> unloadedAtDestination;
 
-	final Unifiable<String> trackingId;
-	final Unifiable<RoutingStatus> routingStatus;
-	final Unifiable<TransportStatus> transportStatus;
-	final Unifiable<LOption<String>> lastKnownLocation;
-	final Unifiable<LOption<String>> currentVoyage;
-	final Unifiable<Boolean> misdirected;
-	final Unifiable<LOption<Instant>> eta;
-	final Unifiable<LOption<HandlingType>> nextType;
-	final Unifiable<LOption<String>> nextLocation;
-	final Unifiable<LOption<String>> nextVoyage;
-	final Unifiable<Boolean> unloadedAtDestination;
-
-	/** The cargo's row with every column a fresh variable: the shape a question and its template share. */
+	/** The cargo's row with every column a fresh variable: the row a question and its template share. */
 	public static Delivery fresh(Unifiable<String> trackingId) {
 		return new Delivery(trackingId, lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
-	/** The cargo's row with every column projected away: the shape a rule probes, naming only the columns it cares about. */
+	/** The cargo's row with every column projected away: the row a rule probes, naming only the columns it cares about. */
 	public static Delivery probe(Unifiable<String> trackingId) {
 		return fresh(trackingId).probe().withTrackingId(trackingId);
 	}
 
-	// -- the shape: what the engine builds both faces from -------------------
+	// -- the row contract: what the engine builds both faces from -------------------
 
 	@Override
 	public Iterable<? extends Term<?>> members() {
@@ -112,7 +113,7 @@ public final class Delivery implements Shape<Delivery> {
 
 	/**
 	 * Delivery.derivedFrom as one rule: the delivery row the rules give now, in
-	 * the stored relation's shape. The partial fields are reified to their
+	 * the stored relation's columns. The partial fields are reified to their
 	 * columns — the value where the rule holds, none where it does not — and
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */

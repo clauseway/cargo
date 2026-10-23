@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.clauseway.functional.tuples.Tuple5;
 import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Row;
+import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
@@ -61,11 +61,11 @@ public final class Tracking {
 		final Unifiable<LOption<String>> voyageNumber = lvar();
 		final Unifiable<Instant> completed = lvar();
 
-		Stream<Row> select(Literal events) {
-			return Query.of(events).select(type, location, voyageNumber, completed).rows();
+		Stream<Solution> select(Literal events) {
+			return Query.of(events).select(type, location, voyageNumber, completed).solutions();
 		}
 
-		Stream<HandlingEvent> events(Stream<Row> rows) {
+		Stream<HandlingEvent> events(Stream<Solution> rows) {
 			return rows.map(row -> new HandlingEvent(row.get(type).get(), row.get(location).get(),
 					row.get(voyageNumber).get().toOptional(), row.get(completed).get()));
 		}
@@ -91,8 +91,8 @@ public final class Tracking {
 		Unifiable<Integer> step = lvar();
 		ActivityColumns c = new ActivityColumns();
 		return c.activities(Query.of(CargoRules.plannedHandling(db, lval(trackingId), step, c.type, c.location, c.voyageNumber))
-				.select(step, c.type, c.location, c.voyageNumber).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(step).get())))
+				.select(step, c.type, c.location, c.voyageNumber).solutions()
+				.sorted(Comparator.comparing((Solution row) -> row.get(step).get())))
 				.collect(Collectors.toList());
 	}
 
@@ -108,7 +108,7 @@ public final class Tracking {
 		final Unifiable<String> location = lvar();
 		final Unifiable<LOption<String>> voyageNumber = lvar();
 
-		Stream<HandlingActivity> activities(Stream<Row> rows) {
+		Stream<HandlingActivity> activities(Stream<Solution> rows) {
 			return rows.map(row -> new HandlingActivity(row.get(type).get(), row.get(location).get(),
 					row.get(voyageNumber).get().toOptional()));
 		}

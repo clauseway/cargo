@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Row;
+import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -95,7 +95,7 @@ public final class Cargo {
 		Unifiable<String> destination = lvar();
 		Unifiable<Instant> deadline = lvar();
 		return Query.of(routeSpecification(db, lval(trackingId), origin, destination, deadline))
-				.select(origin, destination, deadline).rows()
+				.select(origin, destination, deadline).solutions()
 				.map(row -> new RouteSpecification(row.get(origin).get(), row.get(destination).get(),
 						row.get(deadline).get()))
 				.findFirst();
@@ -106,8 +106,8 @@ public final class Cargo {
 		Unifiable<Integer> index = lvar();
 		LegColumns c = new LegColumns();
 		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
-				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).rows()
-				.sorted(Comparator.comparing((Row row) -> row.get(index).get())))
+				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).solutions()
+				.sorted(Comparator.comparing((Solution row) -> row.get(index).get())))
 				.collect(Collectors.toList());
 	}
 
@@ -139,11 +139,11 @@ public final class Cargo {
 		final Unifiable<Instant> loadTime = lvar();
 		final Unifiable<Instant> unloadTime = lvar();
 
-		Stream<Row> select(Literal legs) {
-			return Query.of(legs).select(voyageNumber, load, unload, loadTime, unloadTime).rows();
+		Stream<Solution> select(Literal legs) {
+			return Query.of(legs).select(voyageNumber, load, unload, loadTime, unloadTime).solutions();
 		}
 
-		Stream<Leg> legs(Stream<Row> rows) {
+		Stream<Leg> legs(Stream<Solution> rows) {
 			return rows.map(row -> new Leg(row.get(voyageNumber).get(), row.get(load).get(), row.get(unload).get(),
 					row.get(loadTime).get(), row.get(unloadTime).get()));
 		}
