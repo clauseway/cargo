@@ -4,9 +4,9 @@ package org.clauseway.shipping;
 // ABOUTME: constructor guards: a handling registers only against known facts.
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.clauseway.shipping.HandlingType.CLAIM;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.CLAIM;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
 import static org.clauseway.shipping.Hours.hour;
 import static org.clauseway.shipping.Refused.denials;
 import java.util.Optional;
@@ -14,6 +14,7 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.handling.History;
 import org.junit.Test;
+import org.clauseway.shipping.handling.HandlingEventDTO;
 
 public class RegistrationTest {
 
@@ -42,14 +43,14 @@ public class RegistrationTest {
 	public void createHandlingEventWithCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", LOAD, STOCKHOLM, "CM001", hour(1), hour(2)).get();
 		assertThat(s.tracking().handlingHistoryOf("ABC"))
-				.containsExactly(new HandlingEvent(LOAD, STOCKHOLM, Optional.of("CM001"), hour(1)));
+				.containsExactly(new HandlingEventDTO(LOAD, STOCKHOLM, Optional.of("CM001"), hour(1)));
 	}
 
 	@Test
 	public void createHandlingEventWithoutCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", CLAIM, STOCKHOLM, hour(1), hour(2)).get();
 		assertThat(s.tracking().handlingHistoryOf("ABC"))
-				.containsExactly(new HandlingEvent(CLAIM, STOCKHOLM, Optional.empty(), hour(1)));
+				.containsExactly(new HandlingEventDTO(CLAIM, STOCKHOLM, Optional.empty(), hour(1)));
 	}
 
 	@Test

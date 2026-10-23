@@ -16,19 +16,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
-import org.clauseway.shipping.DeliveryDTO;
-import org.clauseway.shipping.HandlingEvent;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Leg;
-import org.clauseway.shipping.RouteSpecification;
+import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingType;
 import org.clauseway.vavr.control.Try;
 
 public final class Cargo {
@@ -40,39 +35,13 @@ public final class Cargo {
 		this.db = db;
 	}
 
-	// -- the essential state: four relations, this package's alone; the delivery is its own ---------
+	// -- the essential state: the cargo and its last handling here, the specification and the legs as rows, the delivery its own ---------
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
 	static Literal cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
 		return Literal.relation(Cargo.class, "cargo")
 				.arg("trackingId", trackingId).indexed()
 				.arg("origin", origin)
-				.from(db);
-	}
-
-	/** The cargo's current requirement; replaced whole when the customer re-specifies. */
-	static Literal routeSpecification(AnswerSource db, Unifiable<String> trackingId,
-			Unifiable<String> origin, Unifiable<String> destination, Unifiable<Instant> arrivalDeadline) {
-		return Literal.relation(Cargo.class, "routeSpecification")
-				.arg("trackingId", trackingId).indexed()
-				.arg("origin", origin)
-				.arg("destination", destination)
-				.arg("arrivalDeadline", arrivalDeadline)
-				.from(db);
-	}
-
-	/** One leg of the cargo's itinerary; the index is the itinerary's order. */
-	static Literal leg(AnswerSource db, Unifiable<String> trackingId, Unifiable<Integer> index,
-			Unifiable<String> voyageNumber, Unifiable<String> loadLocation, Unifiable<String> unloadLocation,
-			Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
-		return Literal.relation(Cargo.class, "leg")
-				.arg("trackingId", trackingId).indexed()
-				.arg("index", index)
-				.arg("voyageNumber", voyageNumber)
-				.arg("loadLocation", loadLocation)
-				.arg("unloadLocation", unloadLocation)
-				.arg("loadTime", loadTime)
-				.arg("unloadTime", unloadTime)
 				.from(db);
 	}
 
@@ -90,37 +59,34 @@ public final class Cargo {
 
 	// -- the parts, as values ----------------------------------------------
 
-	public Optional<RouteSpecification> routeSpecificationOf(String trackingId) {
-		Unifiable<String> origin = lvar();
-		Unifiable<String> destination = lvar();
-		Unifiable<Instant> deadline = lvar();
-		return Query.of(routeSpecification(db, lval(trackingId), origin, destination, deadline))
-				.select(origin, destination, deadline).solutions()
-				.map(row -> new RouteSpecification(row.get(origin).get(), row.get(destination).get(),
-						row.get(deadline).get()))
+	public Optional<RouteSpecificationDTO> routeSpecificationOf(String trackingId) {
+		return RouteSpecification.fresh(lval(trackingId)).stored(db).select()
+				.map(RouteSpecification::toDto)
 				.findFirst();
 	}
 
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
-	public List<Leg> itineraryOf(String trackingId) {
-		Unifiable<Integer> index = lvar();
-		LegColumns c = new LegColumns();
-		return c.legs(Query.of(leg(db, lval(trackingId), index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime))
-				.select(index, c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime).solutions()
-				.sorted(Comparator.comparing((Solution row) -> row.get(index).get())))
+	public List<LegDTO> itineraryOf(String trackingId) {
+		return Leg.fresh(lval(trackingId)).stored(db).select()
+				.sorted(Comparator.comparing((Leg leg) -> leg.index.get()))
+				.map(Leg::toDto)
 				.collect(Collectors.toList());
 	}
 
-	public Optional<Leg> firstLegOf(String trackingId) {
-		LegColumns c = new LegColumns();
-		return c.legs(c.select(CargoRules.firstLeg(db, lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
-				.findFirst();
+	public Optional<LegDTO> firstLegOf(String trackingId) {
+		return CargoRules.firstLeg(db, Leg.fresh(lval(trackingId))).select().map(Leg::toDto).findFirst();
 	}
 
-	public Optional<Leg> lastLegOf(String trackingId) {
-		LegColumns c = new LegColumns();
-		return c.legs(c.select(CargoRules.lastLeg(db, lval(trackingId), c.voyageNumber, c.load, c.unload, c.loadTime, c.unloadTime)))
-				.findFirst();
+	public Optional<LegDTO> lastLegOf(String trackingId) {
+		return CargoRules.lastLeg(db, Leg.fresh(lval(trackingId))).select().map(Leg::toDto).findFirst();
+	}
+
+	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
+	public List<HandlingActivityDTO> planOf(String trackingId) {
+		return CargoRules.plannedHandling(db, HandlingActivity.fresh(lval(trackingId))).select()
+				.sorted(Comparator.comparing((HandlingActivity planned) -> planned.step.get()))
+				.map(HandlingActivity::toDto)
+				.collect(Collectors.toList());
 	}
 
 	/** The cargo's delivery as its commands last stored it. */
@@ -129,24 +95,6 @@ public final class Cargo {
 				.map(Delivery::toDto)
 				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
-	}
-
-	/** The variables of one leg's columns and the row-to-value reading over them. */
-	private static final class LegColumns {
-		final Unifiable<String> voyageNumber = lvar();
-		final Unifiable<String> load = lvar();
-		final Unifiable<String> unload = lvar();
-		final Unifiable<Instant> loadTime = lvar();
-		final Unifiable<Instant> unloadTime = lvar();
-
-		Stream<Solution> select(Literal legs) {
-			return Query.of(legs).select(voyageNumber, load, unload, loadTime, unloadTime).solutions();
-		}
-
-		Stream<Leg> legs(Stream<Solution> rows) {
-			return rows.map(row -> new Leg(row.get(voyageNumber).get(), row.get(load).get(), row.get(unload).get(),
-					row.get(loadTime).get(), row.get(unloadTime).get()));
-		}
 	}
 
 	// -- the denials, by name; empty means allowed ---------------------------
@@ -164,7 +112,7 @@ public final class Cargo {
 		return reasons(reason -> CargoRules.routingDenial(db, lval(trackingId), reason));
 	}
 
-	private List<String> routingDenials(String trackingId, List<Leg> legs) {
+	private List<String> routingDenials(String trackingId, List<LegDTO> legs) {
 		Stream<String> booked = bookedDenials(trackingId).stream();
 		Stream<String> shape = legs.isEmpty() ? Stream.of("empty itinerary") : Stream.empty();
 		Stream<String> parts = legs.stream().flatMap(leg -> reasons(reason -> CargoRules.legDenial(db,
@@ -184,27 +132,27 @@ public final class Cargo {
 	public Try<Transaction> book(String trackingId, String origin, String destination, Instant arrivalDeadline) {
 		return Command.guarded(bookingDenials(trackingId, origin, destination), () -> Delivery.refresh(db.asserting(
 				cargo(db, lval(trackingId), lval(origin)),
-				routeSpecification(db, lval(trackingId), lval(origin), lval(destination), lval(arrivalDeadline))), trackingId));
+				RouteSpecification.of(trackingId, new RouteSpecificationDTO(origin, destination, arrivalDeadline)).stored(db)), trackingId));
 	}
 
 	/** Cargo.specifyNewRoute. The specification is a value: the old one goes whole, the new one lands, the same one is nothing; the cargo's origin stays. */
 	public Try<Transaction> specify(String trackingId, String origin, String destination, Instant arrivalDeadline) {
 		return Command.guarded(reroutingDenials(trackingId, origin, destination), () -> {
-			RouteSpecification next = new RouteSpecification(origin, destination, arrivalDeadline);
-			Optional<RouteSpecification> current = routeSpecificationOf(trackingId);
+			RouteSpecificationDTO next = new RouteSpecificationDTO(origin, destination, arrivalDeadline);
+			Optional<RouteSpecificationDTO> current = routeSpecificationOf(trackingId);
 			if (current.filter(next::equals).isPresent()) {
 				return db;
 			}
 			return Delivery.refresh(db
-					.retracting(rows(current.map(old -> specified(db, trackingId, old))))
-					.asserting(specified(db, trackingId, next)), trackingId);
+					.retracting(rows(current.map(old -> RouteSpecification.of(trackingId, old).stored(db))))
+					.asserting(RouteSpecification.of(trackingId, next).stored(db)), trackingId);
 		});
 	}
 
 	/** Cargo.assignToRoute. The itinerary is a value: the old legs go, the new ones land in order; a leg both have at one index is neither. */
-	public Try<Transaction> route(String trackingId, List<Leg> legs) {
+	public Try<Transaction> route(String trackingId, List<LegDTO> legs) {
 		return Command.guarded(routingDenials(trackingId, legs), () -> {
-			List<Leg> current = itineraryOf(trackingId);
+			List<LegDTO> current = itineraryOf(trackingId);
 			return Delivery.refresh(db
 					.retracting(legsDiffering(db, trackingId, current, legs))
 					.asserting(legsDiffering(db, trackingId, legs, current)), trackingId);
@@ -212,7 +160,7 @@ public final class Cargo {
 	}
 
 	/** CargoInspectionService.inspectCargo, the cargo's half: shown the handling side's latest event, it keeps it and re-derives its delivery. */
-	public Try<Transaction> inspect(String trackingId, HandlingEvent latest) {
+	public Try<Transaction> inspect(String trackingId, HandlingEventDTO latest) {
 		return Command.guarded(bookedDenials(trackingId), () -> Delivery.refresh(db
 				.clearing(anyHandling(db, trackingId))
 				.asserting(shown(db, trackingId, latest)), trackingId));
@@ -226,24 +174,16 @@ public final class Cargo {
 
 	// -- the facts and rows the commands land and retract --------------------
 
-	/** The cargo specified as given, as a fact. */
-	private static Literal specified(AnswerSource db, String trackingId, RouteSpecification spec) {
-		return routeSpecification(db, lval(trackingId), lval(spec.getOrigin()), lval(spec.getDestination()),
-				lval(spec.getArrivalDeadline()));
-	}
-
 	/** The legs of one itinerary the other does not have at the same index, as facts. */
-	private static List<Literal> legsDiffering(AnswerSource db, String trackingId, List<Leg> legs, List<Leg> other) {
+	private static List<Literal> legsDiffering(AnswerSource db, String trackingId, List<LegDTO> legs, List<LegDTO> other) {
 		return IntStream.range(0, legs.size())
 				.filter(i -> i >= other.size() || !legs.get(i).equals(other.get(i)))
-				.mapToObj(i -> leg(db, lval(trackingId), lval(i), lval(legs.get(i).getVoyageNumber()),
-						lval(legs.get(i).getLoadLocation()), lval(legs.get(i).getUnloadLocation()),
-						lval(legs.get(i).getLoadTime()), lval(legs.get(i).getUnloadTime())))
+				.mapToObj(i -> (Literal) Leg.of(trackingId, i, legs.get(i)).stored(db))
 				.collect(Collectors.toList());
 	}
 
 	/** A handling as the cargo keeps it, as a fact. */
-	private static Literal shown(AnswerSource db, String trackingId, HandlingEvent event) {
+	private static Literal shown(AnswerSource db, String trackingId, HandlingEventDTO event) {
 		return lastHandling(db, lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber()), lval(event.getCompletionTime()));
 	}
@@ -254,7 +194,7 @@ public final class Cargo {
 	}
 
 	/** A fact that may be absent, as the list a write door takes. */
-	private static List<Literal> rows(Optional<Literal> fact) {
-		return fact.map(Collections::singletonList).orElse(Collections.emptyList());
+	private static List<Literal> rows(Optional<? extends Literal> fact) {
+		return fact.map(Collections::<Literal> singletonList).orElse(Collections.emptyList());
 	}
 }

@@ -4,16 +4,22 @@ package org.clauseway.shipping;
 // ABOUTME: history — where the cargo is, whether it strayed, what comes next.
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.clauseway.shipping.HandlingType.CLAIM;
-import static org.clauseway.shipping.HandlingType.CUSTOMS;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
-import static org.clauseway.shipping.HandlingType.UNLOAD;
+import static org.clauseway.shipping.handling.HandlingType.CLAIM;
+import static org.clauseway.shipping.handling.HandlingType.CUSTOMS;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.UNLOAD;
 import static org.clauseway.shipping.Hours.hour;
 
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.DeliveryDTO;
+import org.clauseway.shipping.cargo.HandlingActivityDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.RoutingStatus;
+import org.clauseway.shipping.cargo.TransportStatus;
 
 public class CargoTest {
 
@@ -47,8 +53,8 @@ public class CargoTest {
 		return world()
 				.bookCargo("CARGO1", origin, destination, hour(100)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
-						new Leg(VOYAGE, origin, midpoint, hour(1), hour(2)),
-						new Leg(VOYAGE, midpoint, destination, hour(3), hour(4)))).get();
+						new LegDTO(VOYAGE, origin, midpoint, hour(1), hour(2)),
+						new LegDTO(VOYAGE, midpoint, destination, hour(3), hour(4)))).get();
 	}
 
 	/** A handling landed as given, then the inspection that shows it to the cargo. */
@@ -215,7 +221,7 @@ public class CargoTest {
 	public void aRoutedCargoExpectsReceiptAtTheOriginAndArrivesWithTheLastLeg() {
 		DeliveryDTO d = withItinerary(SHANGHAI, ROTTERDAM, GOTHENBURG).tracking().deliveryOf("CARGO1");
 		assertThat(d.getEta()).contains(hour(4));
-		assertThat(d.getNextExpectedActivity()).contains(new HandlingActivity(RECEIVE, SHANGHAI, Optional.empty()));
+		assertThat(d.getNextExpectedActivity()).contains(new HandlingActivityDTO(RECEIVE, SHANGHAI, Optional.empty()));
 	}
 
 	@Test
@@ -224,23 +230,23 @@ public class CargoTest {
 
 		s = handled(s, "CARGO1", 10, RECEIVE, SHANGHAI);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(LOAD, SHANGHAI, Optional.of(VOYAGE)));
+				.contains(new HandlingActivityDTO(LOAD, SHANGHAI, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 30, LOAD, SHANGHAI, VOYAGE);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)));
+				.contains(new HandlingActivityDTO(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 50, UNLOAD, ROTTERDAM, VOYAGE);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(LOAD, ROTTERDAM, Optional.of(VOYAGE)));
+				.contains(new HandlingActivityDTO(LOAD, ROTTERDAM, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 70, LOAD, ROTTERDAM, VOYAGE);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)));
+				.contains(new HandlingActivityDTO(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)));
 
 		s = handled(s, "CARGO1", 90, UNLOAD, GOTHENBURG, VOYAGE);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity())
-				.contains(new HandlingActivity(CLAIM, GOTHENBURG, Optional.empty()));
+				.contains(new HandlingActivityDTO(CLAIM, GOTHENBURG, Optional.empty()));
 
 		s = handled(s, "CARGO1", 110, CLAIM, GOTHENBURG);
 		assertThat(s.tracking().deliveryOf("CARGO1").getNextExpectedActivity()).isEmpty();

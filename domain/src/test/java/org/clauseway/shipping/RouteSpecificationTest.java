@@ -5,13 +5,14 @@ package org.clauseway.shipping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.shipping.Hours.hour;
-import static org.clauseway.shipping.RoutingStatus.MISROUTED;
-import static org.clauseway.shipping.RoutingStatus.NOT_ROUTED;
-import static org.clauseway.shipping.RoutingStatus.ROUTED;
+import static org.clauseway.shipping.cargo.RoutingStatus.MISROUTED;
+import static org.clauseway.shipping.cargo.RoutingStatus.NOT_ROUTED;
+import static org.clauseway.shipping.cargo.RoutingStatus.ROUTED;
 
 import java.time.Instant;
 import java.util.Arrays;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class RouteSpecificationTest {
 
@@ -34,8 +35,8 @@ public class RouteSpecificationTest {
 				.withCarrierMovement("V002", NEWYORK, CHICAGO, hour(12), hour(20))
 				.bookCargo("ABC", origin, destination, deadline).get()
 				.assignToRoute("ABC", Arrays.asList(
-						new Leg("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
-						new Leg("V002", NEWYORK, CHICAGO, hour(12), hour(20)))).get();
+						new LegDTO("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
+						new LegDTO("V002", NEWYORK, CHICAGO, hour(12), hour(20)))).get();
 	}
 
 	@Test

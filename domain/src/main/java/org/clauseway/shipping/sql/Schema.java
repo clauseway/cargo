@@ -13,11 +13,13 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.sql.Codec;
 import org.clauseway.pldb.sql.SerializableSource;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.RoutingStatus;
-import org.clauseway.shipping.TransportStatus;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.Delivery;
+import org.clauseway.shipping.cargo.Leg;
+import org.clauseway.shipping.cargo.RouteSpecification;
+import org.clauseway.shipping.cargo.RoutingStatus;
+import org.clauseway.shipping.cargo.TransportStatus;
+import org.clauseway.shipping.handling.HandlingType;
 import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.voyage.Voyages;
 
@@ -49,13 +51,13 @@ public final class Schema {
 						.arg("departureTime", INSTANT.arg())
 						.arg("arrivalTime", INSTANT.arg())
 						.from(null))
-				.withCodec(Literal.relation(Cargo.class, "routeSpecification")
+				.withCodec(Literal.relation(RouteSpecification.class, "routeSpecification")
 						.arg("trackingId", lvar())
 						.arg("origin", lvar())
 						.arg("destination", lvar())
 						.arg("arrivalDeadline", INSTANT.arg())
 						.from(null))
-				.withCodec(Literal.relation(Cargo.class, "leg")
+				.withCodec(Literal.relation(Leg.class, "leg")
 						.arg("trackingId", lvar())
 						.arg("index", lvar())
 						.arg("voyageNumber", lvar())

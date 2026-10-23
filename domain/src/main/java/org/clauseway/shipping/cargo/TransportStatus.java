@@ -1,4 +1,4 @@
-package org.clauseway.shipping;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: Where the cargo physically is, read off its last handling: not yet
 // ABOUTME: received, in a port, aboard a carrier, or claimed by the customer.

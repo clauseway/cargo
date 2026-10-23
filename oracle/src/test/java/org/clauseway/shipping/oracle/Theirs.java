@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Leg;
 import se.citerus.dddsample.domain.model.cargo.Cargo;
 import se.citerus.dddsample.domain.model.cargo.Itinerary;
 import se.citerus.dddsample.domain.model.cargo.RouteSpecification;
@@ -24,6 +22,8 @@ import se.citerus.dddsample.domain.model.voyage.Voyage;
 import se.citerus.dddsample.domain.model.voyage.VoyageNumber;
 import se.citerus.dddsample.infrastructure.sampledata.SampleLocations;
 import se.citerus.dddsample.infrastructure.sampledata.SampleVoyages;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
 
 final class Theirs {
 
@@ -53,7 +53,7 @@ final class Theirs {
 		events.put(trackingId, new ArrayList<>());
 	}
 
-	void assignToRoute(String trackingId, List<Leg> legs) {
+	void assignToRoute(String trackingId, List<LegDTO> legs) {
 		cargos.get(trackingId).assignToRoute(new Itinerary(legs.stream()
 				.map(l -> new se.citerus.dddsample.domain.model.cargo.Leg(voyage(l.getVoyageNumber()),
 						location(l.getLoadLocation()), location(l.getUnloadLocation()), l.getLoadTime(), l.getUnloadTime()))

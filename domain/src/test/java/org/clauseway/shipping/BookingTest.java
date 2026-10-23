@@ -14,6 +14,9 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.RouteSpecificationDTO;
+import org.clauseway.shipping.cargo.RoutingStatus;
 
 public class BookingTest {
 
@@ -67,7 +70,7 @@ public class BookingTest {
 
 	@Test
 	public void onlyABookedCargoCanBeRouted() {
-		List<Leg> legs = Arrays.asList(new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
+		List<LegDTO> legs = Arrays.asList(new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
 		Shipping s = open(bookedStore(), "route");
 		assertThat(denials(s.assignToRoute("NOEXIST", legs))).containsExactly("unknown cargo");
 	}
@@ -75,9 +78,9 @@ public class BookingTest {
 	/** A leg is made of a Voyage and two Locations; none of them can be made from a number or a code nothing is known by. */
 	@Test
 	public void aLegNamesAKnownVoyageAndKnownPorts() {
-		List<Leg> legs = Arrays.asList(
-				new Leg("NOPE", STOCKHOLM, "ZZZZZ", hour(1), hour(2)),
-				new Leg("0123", "YYYYY", HAMBURG, hour(3), hour(4)));
+		List<LegDTO> legs = Arrays.asList(
+				new LegDTO("NOPE", STOCKHOLM, "ZZZZZ", hour(1), hour(2)),
+				new LegDTO("0123", "YYYYY", HAMBURG, hour(3), hour(4)));
 		Shipping s = open(bookedStore(), "route");
 		assertThat(denials(s.assignToRoute("XYZ", legs)))
 				.containsExactlyInAnyOrder("unknown voyage", "unknown unload port", "unknown load port");
@@ -87,9 +90,9 @@ public class BookingTest {
 	@Test
 	public void aRouteSharingALegWithTheCurrentOneReplacesIt() {
 		SharedDatabase store = bookedStore();
-		Leg first = new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2));
+		LegDTO first = new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2));
 		assertThat(open(store, "route").assignToRoute("XYZ", Arrays.asList(
-				first, new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
+				first, new LegDTO("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "reroute").assignToRoute("XYZ", Arrays.asList(first)).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().itineraryOf("XYZ")).containsExactly(first);
 	}
@@ -100,7 +103,7 @@ public class BookingTest {
 		SharedDatabase store = bookedStore();
 		assertThat(open(store, "again").specifyNewRoute("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
-				.contains(new RouteSpecification(STOCKHOLM, MELBOURNE, hour(100)));
+				.contains(new RouteSpecificationDTO(STOCKHOLM, MELBOURNE, hour(100)));
 	}
 
 	/** The root guards its own writes: booking a taken id is refused with no facade in between. */
@@ -122,7 +125,7 @@ public class BookingTest {
 	public void aNewSpecificationReplacesTheOld() {
 		Shipping s = open(bookedStore(), "reroute")
 				.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get();
-		assertThat(s.tracking().routeSpecificationOf("XYZ")).contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
+		assertThat(s.tracking().routeSpecificationOf("XYZ")).contains(new RouteSpecificationDTO(STOCKHOLM, HAMBURG, hour(50)));
 	}
 
 	@Test
@@ -130,8 +133,8 @@ public class BookingTest {
 		SharedDatabase store = bookedStore();
 		assertThat(open(store, "route")
 				.assignToRoute("XYZ", Arrays.asList(
-						new Leg("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
-						new Leg("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get()
+						new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
+						new LegDTO("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get()
 				.commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(RoutingStatus.ROUTED);
 
@@ -154,6 +157,6 @@ public class BookingTest {
 	public void reSpecifyingBeforeTheBookingIsCommittedReplacesTheSpecification() {
 		Shipping booked = SampleLocations.declaredIn(Shipping.empty()).bookCargo("XYZ", STOCKHOLM, MELBOURNE, hour(100)).get();
 		assertThat(booked.specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get().tracking().routeSpecificationOf("XYZ"))
-				.contains(new RouteSpecification(STOCKHOLM, HAMBURG, hour(50)));
+				.contains(new RouteSpecificationDTO(STOCKHOLM, HAMBURG, hour(50)));
 	}
 }

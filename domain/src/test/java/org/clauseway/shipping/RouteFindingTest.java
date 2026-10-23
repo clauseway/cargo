@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class RouteFindingTest {
 
@@ -44,14 +45,14 @@ public class RouteFindingTest {
 				.bookCargo("ABC", origin, destination, deadline).get();
 	}
 
-	private static final Leg V001_TO_NEWYORK = new Leg("V001", HONGKONG, NEWYORK, hour(1), hour(10));
-	private static final Leg V003_TO_NEWYORK = new Leg("V003", HONGKONG, NEWYORK, hour(2), hour(9));
-	private static final Leg V002_TO_CHICAGO = new Leg("V002", NEWYORK, CHICAGO, hour(12), hour(20));
-	private static final Leg V004_TO_CHICAGO = new Leg("V004", NEWYORK, CHICAGO, hour(9), hour(15));
-	private static final Leg V005_TO_DALLAS = new Leg("V005", CHICAGO, DALLAS, hour(21), hour(24));
+	private static final LegDTO V001_TO_NEWYORK = new LegDTO("V001", HONGKONG, NEWYORK, hour(1), hour(10));
+	private static final LegDTO V003_TO_NEWYORK = new LegDTO("V003", HONGKONG, NEWYORK, hour(2), hour(9));
+	private static final LegDTO V002_TO_CHICAGO = new LegDTO("V002", NEWYORK, CHICAGO, hour(12), hour(20));
+	private static final LegDTO V004_TO_CHICAGO = new LegDTO("V004", NEWYORK, CHICAGO, hour(9), hour(15));
+	private static final LegDTO V005_TO_DALLAS = new LegDTO("V005", CHICAGO, DALLAS, hour(21), hour(24));
 
 	@SafeVarargs
-	private static List<List<Leg>> routes(List<Leg>... routes) {
+	private static List<List<LegDTO>> routes(List<LegDTO>... routes) {
 		return Arrays.asList(routes);
 	}
 

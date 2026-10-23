@@ -4,9 +4,9 @@ package org.clauseway.shipping;
 // ABOUTME: serializable tier — rules over SQL regions, and SSI as the certifier.
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
-import static org.clauseway.shipping.HandlingType.UNLOAD;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.UNLOAD;
 import static org.clauseway.shipping.Hours.hour;
 
 import java.sql.Connection;
@@ -29,6 +29,14 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.clauseway.shipping.cargo.DeliveryDTO;
+import org.clauseway.shipping.cargo.HandlingActivityDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.Notice;
+import org.clauseway.shipping.cargo.RouteSpecificationDTO;
+import org.clauseway.shipping.cargo.RoutingStatus;
+import org.clauseway.shipping.cargo.TransportStatus;
 
 public class PostgresWorldTest {
 
@@ -132,7 +140,7 @@ public class PostgresWorldTest {
 		seed();
 
 		Shipping routing = open("route");
-		List<List<Leg>> candidates = routing.tracking().routeCandidatesOf("CARGO1");
+		List<List<LegDTO>> candidates = routing.tracking().routeCandidatesOf("CARGO1");
 		assertThat(candidates).hasSize(1);
 		assertThat(routing.assignToRoute("CARGO1", candidates.get(0)).get().commit().isSuccess()).isTrue();
 		assertThat(open("check").tracking().routingStatusOf("CARGO1")).isEqualTo(RoutingStatus.ROUTED);
@@ -149,7 +157,7 @@ public class PostgresWorldTest {
 		assertThat(arrived.tracking().deliveryOf("CARGO1")).isEqualTo(new DeliveryDTO(
 				RoutingStatus.ROUTED, TransportStatus.IN_PORT, Optional.of(GOTHENBURG), Optional.empty(),
 				false, Optional.of(hour(4)),
-				Optional.of(new HandlingActivity(HandlingType.CLAIM, GOTHENBURG, Optional.empty())), true));
+				Optional.of(new HandlingActivityDTO(HandlingType.CLAIM, GOTHENBURG, Optional.empty())), true));
 		assertThat(arrived.tracking().noticesOf("CARGO1")).containsExactly(Notice.ARRIVED);
 
 		assertThat(open("misdirect")
@@ -175,7 +183,7 @@ public class PostgresWorldTest {
 		assertThat(toRotterdam.commit().isSuccess()).isTrue();
 		assertThat(toHelsinki.commit().getCause()).isInstanceOf(Transaction.Conflict.class);
 		assertThat(open("check").tracking().routeSpecificationOf("CARGO1"))
-				.contains(new RouteSpecification(SHANGHAI, ROTTERDAM, hour(5)));
+				.contains(new RouteSpecificationDTO(SHANGHAI, ROTTERDAM, hour(5)));
 	}
 
 	/**
@@ -188,7 +196,7 @@ public class PostgresWorldTest {
 	public void aRouteChosenForASpecificationTheWorldHasLeftIsRefusedThenLandsAsMisrouted() throws SQLException {
 		seed();
 		Shipping routing = open("route");
-		List<Leg> chosen = routing.tracking().routeCandidatesOf("CARGO1").get(0);
+		List<LegDTO> chosen = routing.tracking().routeCandidatesOf("CARGO1").get(0);
 		Shipping routed = routing.assignToRoute("CARGO1", chosen).get();
 
 		assertThat(open("reroute").specifyNewRoute("CARGO1", SHANGHAI, ROTTERDAM, hour(5)).get()

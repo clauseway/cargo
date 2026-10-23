@@ -10,6 +10,7 @@ import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
+import static org.clauseway.shipping.Reads.value;
 import static org.clauseway.shipping.cargo.CargoRules.currentVoyage;
 import static org.clauseway.shipping.cargo.CargoRules.eta;
 import static org.clauseway.shipping.cargo.CargoRules.lastKnownLocation;
@@ -37,11 +38,7 @@ import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Rows;
 import org.clauseway.pldb.relations.Row;
 import org.clauseway.pldb.transaction.Transaction;
-import org.clauseway.shipping.DeliveryDTO;
-import org.clauseway.shipping.HandlingActivity;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.RoutingStatus;
-import org.clauseway.shipping.TransportStatus;
+import org.clauseway.shipping.handling.HandlingType;
 
 @With
 @Value
@@ -171,14 +168,9 @@ public class Delivery implements Row<Delivery> {
 				value(currentVoyage).toOptional(),
 				value(misdirected),
 				value(eta).toOptional(),
-				value(nextType).toOptional().map(type -> new HandlingActivity(type,
+				value(nextType).toOptional().map(type -> new HandlingActivityDTO(type,
 						value(nextLocation).toOptional().get(),
 						value(nextVoyage).toOptional())),
 				value(unloadedAtDestination));
-	}
-
-	/** A ground column's value; a row that was not selected has none. */
-	private static <T> T value(Unifiable<T> column) {
-		return column.asVal().orElseThrow(() -> new IllegalStateException("not a ground row: " + column));
 	}
 }

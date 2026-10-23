@@ -8,11 +8,13 @@ import static org.clauseway.shipping.Hours.hour;
 
 import java.util.Optional;
 import org.junit.Test;
+import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingType;
 
 public class HandlingHistoryTest {
 
-	private static final HandlingEvent EVENT_1 = new HandlingEvent(HandlingType.LOAD, "SESTO", Optional.of("X25"), hour(5));
-	private static final HandlingEvent EVENT_2 = new HandlingEvent(HandlingType.UNLOAD, "DEHAM", Optional.of("X25"), hour(10));
+	private static final HandlingEventDTO EVENT_1 = new HandlingEventDTO(HandlingType.LOAD, "SESTO", Optional.of("X25"), hour(5));
+	private static final HandlingEventDTO EVENT_2 = new HandlingEventDTO(HandlingType.UNLOAD, "DEHAM", Optional.of("X25"), hour(10));
 
 	/** Event 1 registered twice, at different times; event 2 registered between. */
 	private static Shipping history() {

@@ -1,4 +1,4 @@
-package org.clauseway.shipping;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: The cargo's delivery as the tracking reads it off the stored row: a plain value
 // ABOUTME: with every field of dddsample's Delivery except the last event and the clock.
@@ -15,6 +15,6 @@ public class DeliveryDTO {
 	Optional<String> currentVoyage;
 	boolean misdirected;
 	Optional<Instant> eta;
-	Optional<HandlingActivity> nextExpectedActivity;
+	Optional<HandlingActivityDTO> nextExpectedActivity;
 	boolean unloadedAtDestination;
 }

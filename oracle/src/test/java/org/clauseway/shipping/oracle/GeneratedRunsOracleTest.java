@@ -11,15 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import org.clauseway.shipping.HandlingActivity;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Leg;
 import org.junit.Test;
 import se.citerus.dddsample.domain.model.location.Location;
 import se.citerus.dddsample.domain.model.voyage.CarrierMovement;
 import se.citerus.dddsample.domain.model.voyage.Voyage;
 import se.citerus.dddsample.infrastructure.sampledata.SampleLocations;
 import se.citerus.dddsample.infrastructure.sampledata.SampleVoyages;
+import org.clauseway.shipping.cargo.HandlingActivityDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class GeneratedRunsOracleTest {
 
@@ -74,9 +74,9 @@ public class GeneratedRunsOracleTest {
 				}
 			}
 			Instant at = FIRST_HANDLING.plus(step, ChronoUnit.DAYS);
-			Optional<HandlingActivity> planned = w.ours.tracking().deliveryOf(id).getNextExpectedActivity();
+			Optional<HandlingActivityDTO> planned = w.ours.tracking().deliveryOf(id).getNextExpectedActivity();
 			if (planned.isPresent() && random.nextDouble() < 0.7) {
-				HandlingActivity a = planned.get();
+				HandlingActivityDTO a = planned.get();
 				w.handle(id, a.getType(), a.getLocation(), a.getVoyageNumber(), at);
 			} else {
 				HandlingType type = HandlingType.values()[random.nextInt(HandlingType.values().length)];
@@ -90,12 +90,12 @@ public class GeneratedRunsOracleTest {
 	}
 
 	/** A route the schedule offers the specification when it offers one; otherwise legs cut from random voyages. */
-	private static List<Leg> itinerary(Random random, Worlds w, String id) {
-		List<List<Leg>> candidates = w.ours.tracking().routeCandidatesOf(id);
+	private static List<LegDTO> itinerary(Random random, Worlds w, String id) {
+		List<List<LegDTO>> candidates = w.ours.tracking().routeCandidatesOf(id);
 		if (!candidates.isEmpty() && random.nextDouble() < 0.7) {
 			return pick(random, candidates);
 		}
-		List<Leg> legs = new ArrayList<>();
+		List<LegDTO> legs = new ArrayList<>();
 		int count = 1 + random.nextInt(3);
 		for (int i = 0; i < count; i++) {
 			Voyage voyage = pick(random, VOYAGES);
@@ -104,7 +104,7 @@ public class GeneratedRunsOracleTest {
 			int to = from + random.nextInt(movements.size() - from);
 			Location load = movements.get(from).departureLocation();
 			Location unload = movements.get(to).arrivalLocation();
-			legs.add(new Leg(voyage.voyageNumber().idString(), load.unLocode().idString(),
+			legs.add(new LegDTO(voyage.voyageNumber().idString(), load.unLocode().idString(),
 					unload.unLocode().idString(), movements.get(from).departureTime(), movements.get(to).arrivalTime()));
 		}
 		return legs;

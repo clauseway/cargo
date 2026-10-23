@@ -13,10 +13,13 @@ import org.clauseway.functional.Nothing;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Cargo;
+import org.clauseway.shipping.handling.HandlingType;
 import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
+import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public final class Shipping implements AutoCloseable {
 
@@ -116,7 +119,7 @@ public final class Shipping implements AutoCloseable {
 	}
 
 	/** BookingService.assignCargoToRoute. */
-	public Try<Shipping> assignToRoute(String trackingId, List<Leg> legs) {
+	public Try<Shipping> assignToRoute(String trackingId, List<LegDTO> legs) {
 		return cargo.route(trackingId, legs).map(Shipping::new);
 	}
 

@@ -5,8 +5,8 @@ package org.clauseway.shipping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.logic.unification.terms.LVal.lval;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
 import static org.clauseway.shipping.Hours.hour;
 
 import java.util.Arrays;
@@ -17,6 +17,12 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Delivery;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.DeliveryDTO;
+import org.clauseway.shipping.cargo.HandlingActivityDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.RoutingStatus;
+import org.clauseway.shipping.cargo.TransportStatus;
 
 public class DeliveryTest {
 
@@ -34,8 +40,8 @@ public class DeliveryTest {
 				.withCarrierMovement(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4))
 				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
-						new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-						new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get()
+						new LegDTO(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
+						new LegDTO(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get()
 				.withHandlingEvent("CARGO1", RECEIVE, SHANGHAI, hour(0), hour(0))
 				.withHandlingEvent("CARGO1", LOAD, SHANGHAI, VOYAGE, hour(1), hour(1))
 				.inspectCargo("CARGO1").get();
@@ -49,7 +55,7 @@ public class DeliveryTest {
 		Transaction db = Transaction.recording(store.open("read"));
 		DeliveryDTO underway = new DeliveryDTO(
 				RoutingStatus.ROUTED, TransportStatus.ONBOARD_CARRIER, Optional.of(SHANGHAI), Optional.of(VOYAGE),
-				false, Optional.of(hour(4)), Optional.of(new HandlingActivity(HandlingType.UNLOAD, ROTTERDAM, Optional.of(VOYAGE))),
+				false, Optional.of(hour(4)), Optional.of(new HandlingActivityDTO(HandlingType.UNLOAD, ROTTERDAM, Optional.of(VOYAGE))),
 				false);
 		assertThat(derived(db, "CARGO1")).containsExactly(underway);
 		assertThat(Shipping.over(db).tracking().deliveryOf("CARGO1")).isEqualTo(underway);

@@ -9,9 +9,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.clauseway.shipping.HandlingEvent;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Leg;
+import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
 
 final class Worlds {
 
@@ -43,7 +43,7 @@ final class Worlds {
 		ours.book(trackingId, origin, destination, deadline);
 	}
 
-	void assignToRoute(String trackingId, List<Leg> legs) {
+	void assignToRoute(String trackingId, List<LegDTO> legs) {
 		script.add("route " + trackingId + " " + legs);
 		theirs.assignToRoute(trackingId, legs);
 		ours.assignToRoute(trackingId, legs);
@@ -72,8 +72,8 @@ final class Worlds {
 		Snapshot t = theirs.delivery(trackingId);
 		Snapshot o = ours.delivery(trackingId);
 		List<String> masked = new ArrayList<>();
-		List<Leg> legs = ours.tracking().itineraryOf(trackingId);
-		Optional<HandlingEvent> last = ours.tracking().lastEventOf(trackingId);
+		List<LegDTO> legs = ours.tracking().itineraryOf(trackingId);
+		Optional<HandlingEventDTO> last = ours.tracking().lastEventOf(trackingId);
 
 		if (legs.isEmpty() && last.isPresent()) {
 			masked.add("routingStatus: unrouted cargo inspected after a handling reads MISROUTED there, NOT_ROUTED here");
@@ -97,7 +97,7 @@ final class Worlds {
 				+ "\ntheirs: " + t + "\nours:   " + o).isEqualTo(t);
 	}
 
-	private static boolean callsTwice(List<Leg> legs, HandlingEvent last) {
+	private static boolean callsTwice(List<LegDTO> legs, HandlingEventDTO last) {
 		String port = last.getLocation();
 		switch (last.getType()) {
 		case LOAD:

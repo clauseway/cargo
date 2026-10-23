@@ -15,8 +15,6 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.cargo.Cargo.cargo;
 import static org.clauseway.shipping.cargo.Cargo.lastHandling;
-import static org.clauseway.shipping.cargo.Cargo.leg;
-import static org.clauseway.shipping.cargo.Cargo.routeSpecification;
 
 import java.time.Instant;
 import lombok.AccessLevel;
@@ -33,10 +31,8 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Notice;
-import org.clauseway.shipping.RoutingStatus;
-import org.clauseway.shipping.TransportStatus;
+import org.clauseway.pldb.relations.Rows;
+import org.clauseway.shipping.handling.HandlingType;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
 
@@ -58,21 +54,13 @@ public final class CargoRules {
 	public static Literal anyLeg(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "anyLeg")
 				.arg("trackingId", trackingId)
-				.solving(leg(db, trackingId, projected(), projected(), projected(), projected(), projected(), projected()));
+				.solving(Leg.probe(trackingId).stored(db));
 	}
 
 	/** The itinerary's first leg: the one at index 0. */
-	public static Literal firstLeg(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> voyageNumber,
-			Unifiable<String> loadLocation, Unifiable<String> unloadLocation,
-			Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
-		return Literal.relation(CargoRules.class, "firstLeg")
-				.arg("trackingId", trackingId)
-				.arg("voyageNumber", voyageNumber)
-				.arg("loadLocation", loadLocation)
-				.arg("unloadLocation", unloadLocation)
-				.arg("loadTime", loadTime)
-				.arg("unloadTime", unloadTime)
-				.solving(leg(db, trackingId, lval(0), voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime));
+	public static Rows<Leg> firstLeg(AnswerSource db, Leg leg) {
+		return Literal.relation(CargoRules.class, "firstLeg").rows(leg)
+				.solving(r -> r.stored(db).and(r.index.unifies(0)));
 	}
 
 	/** The index of the itinerary's last leg: one with no leg at the next index. */
@@ -81,26 +69,15 @@ public final class CargoRules {
 		return Literal.relation(CargoRules.class, "lastIndex")
 				.arg("trackingId", trackingId)
 				.arg("index", index)
-				.solving(leg(db, trackingId, index, projected(), projected(), projected(), projected(), projected())
+				.solving(Leg.probe(trackingId).withIndex(index).stored(db)
 						.and(Ints.addo(index, lval(1), next))
-						.and(exclude(leg(db, trackingId, next, projected(), projected(), projected(),
-								projected(), projected()))));
+						.and(exclude(Leg.probe(trackingId).withIndex(next).stored(db))));
 	}
 
 	/** The itinerary's last leg. */
-	public static Literal lastLeg(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> voyageNumber,
-			Unifiable<String> loadLocation, Unifiable<String> unloadLocation,
-			Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
-		Unifiable<Integer> index = lvar();
-		return Literal.relation(CargoRules.class, "lastLeg")
-				.arg("trackingId", trackingId)
-				.arg("voyageNumber", voyageNumber)
-				.arg("loadLocation", loadLocation)
-				.arg("unloadLocation", unloadLocation)
-				.arg("loadTime", loadTime)
-				.arg("unloadTime", unloadTime)
-				.solving(leg(db, trackingId, index, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime)
-						.and(lastIndex(db, trackingId, index)));
+	public static Rows<Leg> lastLeg(AnswerSource db, Leg leg) {
+		return Literal.relation(CargoRules.class, "lastLeg").rows(leg)
+				.solving(r -> r.stored(db).and(lastIndex(db, r.trackingId, r.index)));
 	}
 
 	/**
@@ -110,37 +87,33 @@ public final class CargoRules {
 	 * claim where the last leg lands. Customs is not planned; it may happen
 	 * anywhere.
 	 */
-	public static Literal plannedHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<Integer> step,
-			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
-		Unifiable<Integer> index = lvar();
-		Unifiable<Integer> twice = lvar();
-		Unifiable<String> legVoyage = lvar();
-		return Literal.relation(CargoRules.class, "plannedHandling")
-				.arg("trackingId", trackingId)
-				.arg("step", step)
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.solving(type.unifies(HandlingType.RECEIVE)
-						.and(firstLeg(db, trackingId, projected(), location, projected(), projected(), projected()))
-						.and(step.unifies(0))
-						.and(voyageNumber.unifies(none()))
-						.or(type.unifies(HandlingType.LOAD)
-								.and(leg(db, trackingId, index, legVoyage, location, projected(), projected(), projected()))
-								.and(voyageNumber.unifies(some(legVoyage)))
-								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(1), step)))
-						.or(type.unifies(HandlingType.UNLOAD)
-								.and(leg(db, trackingId, index, legVoyage, projected(), location, projected(), projected()))
-								.and(voyageNumber.unifies(some(legVoyage)))
-								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(2), step)))
-						.or(type.unifies(HandlingType.CLAIM)
-								.and(leg(db, trackingId, index, projected(), projected(), location, projected(), projected()))
-								.and(lastIndex(db, trackingId, index))
-								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(3), step))
-								.and(voyageNumber.unifies(none()))));
+	public static Rows<HandlingActivity> plannedHandling(AnswerSource db, HandlingActivity planned) {
+		return Literal.relation(CargoRules.class, "plannedHandling").rows(planned)
+				.solving(p -> {
+					Unifiable<Integer> index = lvar();
+					Unifiable<Integer> twice = lvar();
+					Unifiable<String> legVoyage = lvar();
+					return p.type.unifies(HandlingType.RECEIVE)
+							.and(firstLeg(db, new Leg(p.trackingId, projected(), projected(), p.location, projected(), projected(), projected())))
+							.and(p.step.unifies(0))
+							.and(p.voyageNumber.unifies(none()))
+							.or(p.type.unifies(HandlingType.LOAD)
+									.and(new Leg(p.trackingId, index, legVoyage, p.location, projected(), projected(), projected()).stored(db))
+									.and(p.voyageNumber.unifies(some(legVoyage)))
+									.and(Ints.multo(index, lval(2), twice))
+									.and(Ints.addo(twice, lval(1), p.step)))
+							.or(p.type.unifies(HandlingType.UNLOAD)
+									.and(new Leg(p.trackingId, index, legVoyage, projected(), p.location, projected(), projected()).stored(db))
+									.and(p.voyageNumber.unifies(some(legVoyage)))
+									.and(Ints.multo(index, lval(2), twice))
+									.and(Ints.addo(twice, lval(2), p.step)))
+							.or(p.type.unifies(HandlingType.CLAIM)
+									.and(new Leg(p.trackingId, index, projected(), projected(), p.location, projected(), projected()).stored(db))
+									.and(lastIndex(db, p.trackingId, index))
+									.and(Ints.multo(index, lval(2), twice))
+									.and(Ints.addo(twice, lval(3), p.step))
+									.and(p.voyageNumber.unifies(none())));
+				});
 	}
 
 	/**
@@ -155,7 +128,7 @@ public final class CargoRules {
 				.arg("location", location)
 				.arg("voyageNumber", voyageNumber)
 				.solving(exclude(anyLeg(db, trackingId))
-						.or(plannedHandling(db, trackingId, projected(), type, location, voyageNumber))
+						.or(plannedHandling(db, new HandlingActivity(trackingId, projected(), type, location, voyageNumber)))
 						.or(type.unifies(HandlingType.CUSTOMS)));
 	}
 
@@ -237,9 +210,9 @@ public final class CargoRules {
 		Unifiable<Instant> finalArrival = lvar();
 		return Literal.relation(CargoRules.class, "satisfied")
 				.arg("trackingId", trackingId)
-				.solving(routeSpecification(db, trackingId, origin, destination, deadline)
-						.and(firstLeg(db, trackingId, projected(), origin, projected(), projected(), projected()))
-						.and(lastLeg(db, trackingId, projected(), projected(), destination, projected(), finalArrival))
+				.solving(new RouteSpecification(trackingId, origin, destination, deadline).stored(db)
+						.and(firstLeg(db, new Leg(trackingId, projected(), projected(), origin, projected(), projected(), projected())))
+						.and(lastLeg(db, new Leg(trackingId, projected(), projected(), projected(), destination, projected(), finalArrival)))
 						.and(Instants.lss(finalArrival, deadline)));
 	}
 
@@ -292,7 +265,7 @@ public final class CargoRules {
 		return Literal.relation(CargoRules.class, "candidate")
 				.arg("trackingId", trackingId)
 				.arg("legs", legs)
-				.solving(routeSpecification(db, trackingId, origin, destination, deadline)
+				.solving(new RouteSpecification(trackingId, origin, destination, deadline).stored(db)
 						.and(path(db, origin, none(), destination, deadline, legs)));
 	}
 
@@ -388,7 +361,7 @@ public final class CargoRules {
 				.arg("trackingId", trackingId)
 				.arg("time", time)
 				.solving(onTrack(db, trackingId)
-						.and(lastLeg(db, trackingId, projected(), projected(), projected(), projected(), time)));
+						.and(lastLeg(db, new Leg(trackingId, projected(), projected(), projected(), projected(), projected(), time))));
 	}
 
 	/** The last handling was an unload at the specified destination. */
@@ -398,7 +371,7 @@ public final class CargoRules {
 				.solving(defer(() -> {
 					Unifiable<String> location = lvar();
 					return lastHandling(db, trackingId, lval(HandlingType.UNLOAD), location, projected(), projected())
-							.and(routeSpecification(db, trackingId, projected(), location, projected()));
+							.and(new RouteSpecification(trackingId, projected(), location, projected()).stored(db));
 				}));
 	}
 
@@ -416,7 +389,7 @@ public final class CargoRules {
 				.arg("voyageNumber", voyageNumber)
 				.solving(onTrack(db, trackingId)
 						.and(exclude(handled(db, trackingId))
-								.and(plannedHandling(db, trackingId, lval(0), type, location, voyageNumber))
+								.and(plannedHandling(db, new HandlingActivity(trackingId, lval(0), type, location, voyageNumber)))
 								.or(defer(() -> {
 									Unifiable<HandlingType> lastType = lvar();
 									Unifiable<String> lastLocation = lvar();
@@ -424,9 +397,9 @@ public final class CargoRules {
 									Unifiable<Integer> step = lvar();
 									Unifiable<Integer> next = lvar();
 									return lastHandling(db, trackingId, lastType, lastLocation, lastVoyage, projected())
-											.and(plannedHandling(db, trackingId, step, lastType, lastLocation, lastVoyage))
+											.and(plannedHandling(db, new HandlingActivity(trackingId, step, lastType, lastLocation, lastVoyage)))
 											.and(Ints.addo(step, lval(1), next))
-											.and(plannedHandling(db, trackingId, next, type, location, voyageNumber));
+											.and(plannedHandling(db, new HandlingActivity(trackingId, next, type, location, voyageNumber)));
 								}))));
 	}
 

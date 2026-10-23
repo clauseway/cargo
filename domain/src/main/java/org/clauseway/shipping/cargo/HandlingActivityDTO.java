@@ -1,13 +1,14 @@
-package org.clauseway.shipping;
+package org.clauseway.shipping.cargo;
 
 // ABOUTME: A handling that is expected to happen: the kind, the port, and the
 // ABOUTME: voyage for the carrier-side kinds — an event minus its time.
 
 import java.util.Optional;
 import lombok.Value;
+import org.clauseway.shipping.handling.HandlingType;
 
 @Value
-public class HandlingActivity {
+public class HandlingActivityDTO {
 	HandlingType type;
 	String location;
 	Optional<String> voyageNumber;

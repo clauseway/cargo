@@ -4,15 +4,16 @@ package org.clauseway.shipping;
 // ABOUTME: inspected and the notices its derived state warrants are raised.
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
-import static org.clauseway.shipping.HandlingType.UNLOAD;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.UNLOAD;
 import static org.clauseway.shipping.Hours.hour;
-import static org.clauseway.shipping.Notice.ARRIVED;
-import static org.clauseway.shipping.Notice.MISDIRECTED;
+import static org.clauseway.shipping.cargo.Notice.ARRIVED;
+import static org.clauseway.shipping.cargo.Notice.MISDIRECTED;
 
 import java.util.Arrays;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class InspectionTest {
 
@@ -32,8 +33,8 @@ public class InspectionTest {
 				.withCarrierMovement(WRONG_VOYAGE, SHANGHAI, HELSINKI, hour(1), hour(2))
 				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
-						new Leg(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-						new Leg(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
+						new LegDTO(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
+						new LegDTO(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
 	/** The handling is registered on its own side; the cargo learns of it when inspected, as CargoInspectionService does. */

@@ -10,11 +10,15 @@ import static org.clauseway.shipping.Hours.hour;
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.Test;
+import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.RouteSpecificationDTO;
 
 public class ShippingTest {
 
-	private static final Leg STOCKHOLM_HELSINKI = new Leg("V100", "SESTO", "FIHEL", hour(1), hour(5));
-	private static final Leg HELSINKI_HAMBURG = new Leg("V200", "FIHEL", "DEHAM", hour(10), hour(30));
+	private static final LegDTO STOCKHOLM_HELSINKI = new LegDTO("V100", "SESTO", "FIHEL", hour(1), hour(5));
+	private static final LegDTO HELSINKI_HAMBURG = new LegDTO("V200", "FIHEL", "DEHAM", hour(10), hour(30));
 
 	private static Shipping world() {
 		return Shipping.empty()
@@ -31,7 +35,7 @@ public class ShippingTest {
 	public void bookingStatesTheRouteSpecification() {
 		Shipping booked = world().bookCargo("ABC", "SESTO", "DEHAM", hour(100)).get();
 		assertThat(booked.tracking().routeSpecificationOf("ABC"))
-				.contains(new RouteSpecification("SESTO", "DEHAM", hour(100)));
+				.contains(new RouteSpecificationDTO("SESTO", "DEHAM", hour(100)));
 		assertThat(booked.tracking().routeSpecificationOf("XYZ")).isEmpty();
 	}
 
@@ -56,8 +60,8 @@ public class ShippingTest {
 				.withHandlingEvent("ABC", HandlingType.RECEIVE, "SESTO", hour(0), hour(0))
 				.withHandlingEvent("ABC", HandlingType.LOAD, "SESTO", "V100", hour(1), hour(2));
 		assertThat(handled.tracking().handlingHistoryOf("ABC")).containsExactly(
-				new HandlingEvent(HandlingType.RECEIVE, "SESTO", Optional.empty(), hour(0)),
-				new HandlingEvent(HandlingType.LOAD, "SESTO", Optional.of("V100"), hour(1)));
+				new HandlingEventDTO(HandlingType.RECEIVE, "SESTO", Optional.empty(), hour(0)),
+				new HandlingEventDTO(HandlingType.LOAD, "SESTO", Optional.of("V100"), hour(1)));
 		assertThat(handled.tracking().handlingHistoryOf("XYZ")).isEmpty();
 	}
 

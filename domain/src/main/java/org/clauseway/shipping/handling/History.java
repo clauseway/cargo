@@ -24,9 +24,9 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.Rows;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
-import org.clauseway.shipping.HandlingType;
 import org.clauseway.shipping.cargo.CargoRules;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
@@ -60,15 +60,9 @@ public final class History {
 	}
 
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
-	public static Literal event(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
-		return Literal.relation(History.class, "event")
-				.arg("trackingId", trackingId)
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.arg("completed", completed)
-				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, projected()));
+	public static Rows<HandlingEvent> event(AnswerSource db, HandlingEvent event) {
+		return Literal.relation(History.class, "event").rows(event)
+				.solving(e -> handlingEvent(db, e.trackingId, e.type, e.location, e.voyageNumber, e.completed, projected()));
 	}
 
 	/** The cargo has been handled at all. */
@@ -131,16 +125,10 @@ public final class History {
 	}
 
 	/** The most recently completed handling: an event with none later. */
-	public static Literal lastEvent(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
-			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
-		return Literal.relation(History.class, "lastEvent")
-				.arg("trackingId", trackingId)
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.arg("completed", completed)
-				.solving(handlingEvent(db, trackingId, type, location, voyageNumber, completed, projected())
-						.and(exclude(later(db, trackingId, completed))));
+	public static Rows<HandlingEvent> lastEvent(AnswerSource db, HandlingEvent event) {
+		return Literal.relation(History.class, "lastEvent").rows(event)
+				.solving(e -> handlingEvent(db, e.trackingId, e.type, e.location, e.voyageNumber, e.completed, projected())
+						.and(exclude(later(db, e.trackingId, e.completed))));
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */

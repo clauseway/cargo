@@ -7,8 +7,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import org.clauseway.shipping.HandlingType;
-import org.clauseway.shipping.Leg;
 import org.clauseway.shipping.Shipping;
 import org.clauseway.shipping.Tracking;
 import org.clauseway.pldb.inmemory.SharedDatabase;
@@ -19,6 +17,8 @@ import se.citerus.dddsample.domain.model.voyage.CarrierMovement;
 import se.citerus.dddsample.domain.model.voyage.Voyage;
 import se.citerus.dddsample.infrastructure.sampledata.SampleLocations;
 import se.citerus.dddsample.infrastructure.sampledata.SampleVoyages;
+import org.clauseway.shipping.handling.HandlingType;
+import org.clauseway.shipping.cargo.LegDTO;
 
 final class Ours {
 
@@ -63,7 +63,7 @@ final class Ours {
 		commit(s -> s.bookCargo(trackingId, origin, destination, deadline));
 	}
 
-	void assignToRoute(String trackingId, List<Leg> legs) {
+	void assignToRoute(String trackingId, List<LegDTO> legs) {
 		commit(s -> s.assignToRoute(trackingId, legs));
 	}
 

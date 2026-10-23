@@ -32,4 +32,9 @@ public final class Reads {
 	public static <T> List<T> values(Literal goal, Unifiable<T> out) {
 		return Query.of(goal).solve(out).map(Reified::get).collect(Collectors.toList());
 	}
+
+	/** A ground column's value; a row that was not selected has none. */
+	public static <T> T value(Unifiable<T> column) {
+		return column.asVal().orElseThrow(() -> new IllegalStateException("not a ground row: " + column));
+	}
 }

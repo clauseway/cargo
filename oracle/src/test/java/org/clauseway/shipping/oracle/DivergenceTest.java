@@ -5,14 +5,14 @@ package org.clauseway.shipping.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
 import static se.citerus.dddsample.application.util.DateUtils.toDate;
 
 import java.util.List;
 import java.util.Optional;
-import org.clauseway.shipping.Leg;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class DivergenceTest {
 
@@ -55,10 +55,10 @@ public class DivergenceTest {
 		Worlds w = new Worlds();
 		w.book("ABC", HONGKONG, NEWYORK, toDate("2009-03-30"));
 		w.assignToRoute("ABC", List.of(
-				new Leg("V100", HONGKONG, TOKYO, toDate("2009-03-03"), toDate("2009-03-05")),
-				new Leg("V300", TOKYO, MELBOURNE, toDate("2009-03-08"), toDate("2009-03-18")),
-				new Leg("V300", MELBOURNE, TOKYO, toDate("2009-03-19"), toDate("2009-03-21")),
-				new Leg("V200", TOKYO, NEWYORK, toDate("2009-03-22"), toDate("2009-03-25"))));
+				new LegDTO("V100", HONGKONG, TOKYO, toDate("2009-03-03"), toDate("2009-03-05")),
+				new LegDTO("V300", TOKYO, MELBOURNE, toDate("2009-03-08"), toDate("2009-03-18")),
+				new LegDTO("V300", MELBOURNE, TOKYO, toDate("2009-03-19"), toDate("2009-03-21")),
+				new LegDTO("V200", TOKYO, NEWYORK, toDate("2009-03-22"), toDate("2009-03-25"))));
 		w.handle("ABC", RECEIVE, HONGKONG, Optional.empty(), toDate("2009-03-01"));
 		w.handle("ABC", LOAD, HONGKONG, Optional.of("V100"), toDate("2009-03-03"));
 		w.handle("ABC", LOAD, TOKYO, Optional.of("V200"), toDate("2009-03-22"));

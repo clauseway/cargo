@@ -3,16 +3,16 @@ package org.clauseway.shipping.oracle;
 // ABOUTME: dddsample's lifecycle scenario run through both implementations,
 // ABOUTME: the deliveries compared after every step rather than asserted by hand.
 
-import static org.clauseway.shipping.HandlingType.CLAIM;
-import static org.clauseway.shipping.HandlingType.LOAD;
-import static org.clauseway.shipping.HandlingType.RECEIVE;
-import static org.clauseway.shipping.HandlingType.UNLOAD;
+import static org.clauseway.shipping.handling.HandlingType.CLAIM;
+import static org.clauseway.shipping.handling.HandlingType.LOAD;
+import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
+import static org.clauseway.shipping.handling.HandlingType.UNLOAD;
 import static se.citerus.dddsample.application.util.DateUtils.toDate;
 
 import java.util.List;
 import java.util.Optional;
-import org.clauseway.shipping.Leg;
 import org.junit.Test;
+import org.clauseway.shipping.cargo.LegDTO;
 
 public class LifecycleScenarioOracleTest {
 
@@ -32,9 +32,9 @@ public class LifecycleScenarioOracleTest {
 		w.assertAgree(id);
 
 		w.assignToRoute(id, List.of(
-				new Leg("V100", HONGKONG, NEWYORK, toDate("2009-03-03"), toDate("2009-03-09")),
-				new Leg("V200", NEWYORK, CHICAGO, toDate("2009-03-10"), toDate("2009-03-14")),
-				new Leg("V200", CHICAGO, STOCKHOLM, toDate("2009-03-07"), toDate("2009-03-11"))));
+				new LegDTO("V100", HONGKONG, NEWYORK, toDate("2009-03-03"), toDate("2009-03-09")),
+				new LegDTO("V200", NEWYORK, CHICAGO, toDate("2009-03-10"), toDate("2009-03-14")),
+				new LegDTO("V200", CHICAGO, STOCKHOLM, toDate("2009-03-07"), toDate("2009-03-11"))));
 		w.assertAgree(id);
 
 		w.handle(id, RECEIVE, HONGKONG, Optional.empty(), toDate("2009-03-01"));
@@ -47,8 +47,8 @@ public class LifecycleScenarioOracleTest {
 		w.specifyNewRoute(id, TOKYO, STOCKHOLM, toDate("2009-03-18"));
 		w.assertAgree(id);
 		w.assignToRoute(id, List.of(
-				new Leg("V300", TOKYO, HAMBURG, toDate("2009-03-08"), toDate("2009-03-12")),
-				new Leg("V400", HAMBURG, STOCKHOLM, toDate("2009-03-14"), toDate("2009-03-15"))));
+				new LegDTO("V300", TOKYO, HAMBURG, toDate("2009-03-08"), toDate("2009-03-12")),
+				new LegDTO("V400", HAMBURG, STOCKHOLM, toDate("2009-03-14"), toDate("2009-03-15"))));
 		w.assertAgree(id);
 
 		w.handle(id, LOAD, TOKYO, Optional.of("V300"), toDate("2009-03-08"));

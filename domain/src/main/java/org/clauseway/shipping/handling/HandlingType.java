@@ -1,4 +1,4 @@
-package org.clauseway.shipping;
+package org.clauseway.shipping.handling;
 
 // ABOUTME: The five kinds of handling a cargo undergoes; the two carrier-side
 // ABOUTME: kinds name a voyage, the three port-side kinds never do.
