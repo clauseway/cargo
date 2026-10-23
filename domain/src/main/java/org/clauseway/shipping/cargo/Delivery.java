@@ -9,6 +9,8 @@ import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.pldb.relations.Literal.flag;
+import static org.clauseway.pldb.relations.Literal.option;
 import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.Reads.value;
 import static org.clauseway.shipping.cargo.CargoRules.currentVoyage;
@@ -23,12 +25,10 @@ import static org.clauseway.shipping.cargo.CargoRules.unloadedAtDestination;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.With;
-import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
@@ -118,10 +118,10 @@ public class Delivery implements Row<Delivery> {
 		return Literal.relation(Delivery.class, "derived").rows(this)
 				.solving(r -> routingStatus(db, r.trackingId, r.routingStatus)
 						.and(transportStatus(db, r.trackingId, r.transportStatus))
-						.and(optional(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
-						.and(optional(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
+						.and(option(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
+						.and(option(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
 						.and(flag(misdirected(db, r.trackingId), r.misdirected))
-						.and(optional(time -> eta(db, r.trackingId, time), r.eta))
+						.and(option(time -> eta(db, r.trackingId, time), r.eta))
 						.and(defer(() -> {
 							Unifiable<HandlingType> type = lvar();
 							Unifiable<String> location = lvar();
@@ -133,19 +133,6 @@ public class Delivery implements Row<Delivery> {
 								.and(r.nextLocation.unifies(none()))
 								.and(r.nextVoyage.unifies(none()))))
 						.and(flag(unloadedAtDestination(db, r.trackingId), r.unloadedAtDestination)));
-	}
-
-	/** A partial rule reified to a column: its value where it holds, none where it does not. */
-	private static <T> Goal optional(Function<Unifiable<T>, Literal> rule, Unifiable<LOption<T>> column) {
-		return defer(() -> {
-			Unifiable<T> value = lvar();
-			return rule.apply(value).and(column.unifies(some(value)));
-		}).or(exclude(rule.apply(projected())).and(column.unifies(none())));
-	}
-
-	/** A predicate reified to a boolean column. */
-	private static Goal flag(Literal rule, Unifiable<Boolean> column) {
-		return rule.and(column.unifies(true)).or(exclude(rule).and(column.unifies(false)));
 	}
 
 	// -- the refresh, and the value ------------------------------------------
