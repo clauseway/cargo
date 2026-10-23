@@ -33,6 +33,7 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
+import org.clauseway.pldb.relations.Rows;
 import org.clauseway.pldb.relations.Shape;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.DeliveryDTO;
@@ -105,8 +106,8 @@ public final class Delivery implements Shape<Delivery> {
 	// -- the two faces: stored, and derived from the rules -------------------
 
 	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
-	Literal stored(AnswerSource db) {
-		return Literal.relation(Delivery.class, "delivery").columns(this).from(db);
+	Rows<Delivery> stored(AnswerSource db) {
+		return Literal.relation(Delivery.class, "delivery").rows(this).from(db);
 	}
 
 	/**
@@ -115,10 +116,9 @@ public final class Delivery implements Shape<Delivery> {
 	 * columns — the value where the rule holds, none where it does not — and
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
-	public Literal derived(AnswerSource db) {
-		Delivery r = this;
-		return Literal.relation(Delivery.class, "derived").columns(this)
-				.solving(routingStatus(db, r.trackingId, r.routingStatus)
+	public Rows<Delivery> derived(AnswerSource db) {
+		return Literal.relation(Delivery.class, "derived").rows(this)
+				.solving(r -> routingStatus(db, r.trackingId, r.routingStatus)
 						.and(transportStatus(db, r.trackingId, r.transportStatus))
 						.and(optional(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
 						.and(optional(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
