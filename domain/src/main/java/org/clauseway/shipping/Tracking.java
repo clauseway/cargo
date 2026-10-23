@@ -9,15 +9,14 @@ import static org.clauseway.shipping.Reads.first;
 import static org.clauseway.shipping.Reads.holds;
 import static org.clauseway.shipping.Reads.values;
 
-import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.clauseway.functional.tuples.Tuple5;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.structures.LOption;
+import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.shipping.cargo.Cargo;
@@ -26,6 +25,7 @@ import org.clauseway.shipping.cargo.DeliveryDTO;
 import org.clauseway.shipping.cargo.HandlingActivityDTO;
 import org.clauseway.shipping.cargo.LegDTO;
 import org.clauseway.shipping.cargo.Notice;
+import org.clauseway.shipping.cargo.CandidateLeg;
 import org.clauseway.shipping.cargo.RouteSpecificationDTO;
 import org.clauseway.shipping.cargo.RoutingStatus;
 import org.clauseway.shipping.handling.HandlingEvent;
@@ -99,11 +99,11 @@ public final class Tracking {
 
 	/** The itineraries the schedule offers the cargo's specification. */
 	public List<List<LegDTO>> routeCandidatesOf(String trackingId) {
-		Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> legs = lvar();
+		Unifiable<LList<CandidateLeg>> legs = lvar();
 		return Query.of(CargoRules.candidate(db, lval(trackingId), legs)).solve(legs)
 				.map(route -> route.get().elements()
-						.map(leg -> leg.get())
-						.map(leg -> new LegDTO(leg._1.get(), leg._2.get(), leg._3.get(), leg._4.get(), leg._5.get()))
+						.map(Term::get)
+						.map(CandidateLeg::toDto)
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
 	}

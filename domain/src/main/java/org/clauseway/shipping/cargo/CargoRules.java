@@ -21,7 +21,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import org.clauseway.functional.tuples.Tuple5;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.finitedomain.Ints;
 import org.clauseway.logic.goals.Goal;
@@ -226,7 +225,7 @@ public final class CargoRules {
 	public static Literal path(AnswerSource db, Unifiable<String> from,
 			Unifiable<LOption<Tuple2<Unifiable<Instant>, Unifiable<String>>>> connection,
 			Unifiable<String> destination, Unifiable<Instant> deadline,
-			Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> legs) {
+			Unifiable<LList<CandidateLeg>> legs) {
 		return Literal.relation(CargoRules.class, "path")
 				.arg("from", from)
 				.arg("connection", connection)
@@ -238,9 +237,8 @@ public final class CargoRules {
 					Unifiable<String> to = lvar();
 					Unifiable<Instant> departure = lvar();
 					Unifiable<Instant> arrival = lvar();
-					Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> onward = lvar();
-					Unifiable<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>> leg =
-							lval(Tuple.of(voyageNumber, from, to, departure, arrival));
+					Unifiable<LList<CandidateLeg>> onward = lvar();
+					Unifiable<CandidateLeg> leg = lval(new CandidateLeg(voyageNumber, from, to, departure, arrival));
 					return Voyages.aboard(db, voyageNumber, from, to, departure, arrival)
 							.and(exclude(from.unifies(to)))
 							.and(matche(connection,
@@ -257,8 +255,7 @@ public final class CargoRules {
 	}
 
 	/** RoutingService.fetchRoutesForSpecification: the routes the schedule offers the cargo's specification. */
-	public static Literal candidate(AnswerSource db, Unifiable<String> trackingId,
-			Unifiable<LList<Tuple5<Unifiable<String>, Unifiable<String>, Unifiable<String>, Unifiable<Instant>, Unifiable<Instant>>>> legs) {
+	public static Literal candidate(AnswerSource db, Unifiable<String> trackingId, Unifiable<LList<CandidateLeg>> legs) {
 		Unifiable<String> origin = lvar();
 		Unifiable<String> destination = lvar();
 		Unifiable<Instant> deadline = lvar();
