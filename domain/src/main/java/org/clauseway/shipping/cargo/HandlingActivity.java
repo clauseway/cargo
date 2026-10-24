@@ -5,14 +5,14 @@ package org.clauseway.shipping.cargo;
 
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Property;
@@ -22,7 +22,7 @@ import org.clauseway.shipping.handling.HandlingType;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class HandlingActivity implements Schema<Map.Entry<Integer, HandlingActivityDto>> {
+public final class HandlingActivity implements Schema<Tuple2<Integer, HandlingActivityDto>> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<Integer> step;
@@ -52,8 +52,8 @@ public final class HandlingActivity implements Schema<Map.Entry<Integer, Handlin
 
 	/** A solution as the handling at its step: the step is the plan's, not the activity's, so it rides beside the value. */
 	@Override
-	public Map.Entry<Integer, HandlingActivityDto> map(Solution s) {
-		return new AbstractMap.SimpleImmutableEntry<>(s.get(step).get(),
+	public Tuple2<Integer, HandlingActivityDto> map(Solution s) {
+		return Tuple.of(s.get(step).get(),
 				new HandlingActivityDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional()));
 	}
 }

@@ -8,13 +8,13 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -26,7 +26,7 @@ import org.clauseway.shipping.cargo.dto.LegDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class Leg implements Schema<Map.Entry<Integer, LegDto>> {
+public final class Leg implements Schema<Tuple2<Integer, LegDto>> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<Integer> index;
@@ -76,8 +76,8 @@ public final class Leg implements Schema<Map.Entry<Integer, LegDto>> {
 
 	/** A solution as the leg at its index: the index is the itinerary's, not the leg's, so it rides beside the value. */
 	@Override
-	public Map.Entry<Integer, LegDto> map(Solution s) {
-		return new AbstractMap.SimpleImmutableEntry<>(s.get(index).get(), new LegDto(s.get(voyageNumber).get(),
+	public Tuple2<Integer, LegDto> map(Solution s) {
+		return Tuple.of(s.get(index).get(), new LegDto(s.get(voyageNumber).get(),
 				s.get(loadLocation).get(), s.get(unloadLocation).get(), s.get(loadTime).get(), s.get(unloadTime).get()));
 	}
 }

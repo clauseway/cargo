@@ -11,14 +11,15 @@ import static org.clauseway.shipping.cargo.CargoRules.lastHandling;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
+import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.unification.terms.Unifiable;
@@ -49,27 +50,27 @@ public final class Cargo {
 	public List<LegDto> itineraryOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
 		return Query.of(leg.stored(db)).select(leg).stream()
-				.sorted(Map.Entry.comparingByKey())
-				.map(Map.Entry::getValue)
+				.sorted(Comparator.comparing(Tuple2::_1))
+				.map(Tuple2::_2)
 				.collect(Collectors.toList());
 	}
 
 	public Optional<LegDto> firstLegOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
-		return Query.of(CargoRules.firstLeg(db, leg)).select(leg).stream().map(Map.Entry::getValue).findFirst();
+		return Query.of(CargoRules.firstLeg(db, leg)).select(leg).stream().map(Tuple2::_2).findFirst();
 	}
 
 	public Optional<LegDto> lastLegOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
-		return Query.of(CargoRules.lastLeg(db, leg)).select(leg).stream().map(Map.Entry::getValue).findFirst();
+		return Query.of(CargoRules.lastLeg(db, leg)).select(leg).stream().map(Tuple2::_2).findFirst();
 	}
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
 	public List<HandlingActivityDto> planOf(String trackingId) {
 		HandlingActivity planned = HandlingActivity.fresh(lval(trackingId));
 		return Query.of(CargoRules.plannedHandling(db, planned)).select(planned).stream()
-				.sorted(Map.Entry.comparingByKey())
-				.map(Map.Entry::getValue)
+				.sorted(Comparator.comparing(Tuple2::_1))
+				.map(Tuple2::_2)
 				.collect(Collectors.toList());
 	}
 
