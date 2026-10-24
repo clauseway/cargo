@@ -12,7 +12,6 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.literals.Literal.flag;
 import static org.clauseway.pldb.relations.literals.Literal.option;
 import static org.clauseway.pldb.relations.Projected.projected;
-import static org.clauseway.shipping.Reads.value;
 import static org.clauseway.shipping.cargo.CargoRules.currentVoyage;
 import static org.clauseway.shipping.cargo.CargoRules.eta;
 import static org.clauseway.shipping.cargo.CargoRules.lastKnownLocation;
@@ -29,8 +28,8 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.With;
+import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
@@ -45,20 +44,20 @@ import org.clauseway.shipping.handling.HandlingType;
 @With
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Delivery implements Schema<Delivery> {
+public class Delivery implements Schema<DeliveryDto> {
 
 	// -- the row: the key and the ten columns, as variables ------------------
-	Term<String> trackingId;
-	Term<RoutingStatus> routingStatus;
-	Term<TransportStatus> transportStatus;
-	Term<LOption<String>> lastKnownLocation;
-	Term<LOption<String>> currentVoyage;
-	Term<Boolean> misdirected;
-	Term<LOption<Instant>> eta;
-	Term<LOption<HandlingType>> nextType;
-	Term<LOption<String>> nextLocation;
-	Term<LOption<String>> nextVoyage;
-	Term<Boolean> unloadedAtDestination;
+	Unifiable<String> trackingId;
+	Unifiable<RoutingStatus> routingStatus;
+	Unifiable<TransportStatus> transportStatus;
+	Unifiable<LOption<String>> lastKnownLocation;
+	Unifiable<LOption<String>> currentVoyage;
+	Unifiable<Boolean> misdirected;
+	Unifiable<LOption<Instant>> eta;
+	Unifiable<LOption<HandlingType>> nextType;
+	Unifiable<LOption<String>> nextLocation;
+	Unifiable<LOption<String>> nextVoyage;
+	Unifiable<Boolean> unloadedAtDestination;
 
 	/** The cargo's row with every column a fresh variable: the row a question and its template share. */
 	public static Delivery fresh(Unifiable<String> trackingId) {
@@ -67,24 +66,16 @@ public class Delivery implements Schema<Delivery> {
 
 	/** The cargo's row with every column projected away: the row a rule probes, naming only the columns it cares about. */
 	public static Delivery probe(Unifiable<String> trackingId) {
-		return fresh(trackingId).probe().withTrackingId(trackingId);
+		return new Delivery(trackingId, projected(), projected(), projected(), projected(), projected(), projected(),
+				projected(), projected(), projected(), projected());
 	}
 
-	// -- the row contract: what the engine builds both faces from -------------------
+	// -- the schema: the keys the head is over, the columns, the value ---------------
 
 	@Override
-	public Iterable<? extends Term<?>> members() {
+	public Iterable<? extends Unifiable<?>> keys() {
 		return Arrays.asList(trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected,
 				eta, nextType, nextLocation, nextVoyage, unloadedAtDestination);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Delivery withMembers(Term<?>[] m) {
-		return new Delivery((Term<String>) m[0], (Term<RoutingStatus>) m[1], (Term<TransportStatus>) m[2],
-				(Term<LOption<String>>) m[3], (Term<LOption<String>>) m[4], (Term<Boolean>) m[5],
-				(Term<LOption<Instant>>) m[6], (Term<LOption<HandlingType>>) m[7],
-				(Term<LOption<String>>) m[8], (Term<LOption<String>>) m[9], (Term<Boolean>) m[10]);
 	}
 
 	@Override
@@ -117,17 +108,6 @@ public class Delivery implements Schema<Delivery> {
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
 	public Literal<Delivery> derived(AnswerSource db) {
-		Unifiable<String> trackingId = this.trackingId.unifiable();
-		Unifiable<RoutingStatus> routingStatus = this.routingStatus.unifiable();
-		Unifiable<TransportStatus> transportStatus = this.transportStatus.unifiable();
-		Unifiable<LOption<String>> lastKnownLocation = this.lastKnownLocation.unifiable();
-		Unifiable<LOption<String>> currentVoyage = this.currentVoyage.unifiable();
-		Unifiable<Boolean> misdirected = this.misdirected.unifiable();
-		Unifiable<LOption<Instant>> eta = this.eta.unifiable();
-		Unifiable<LOption<HandlingType>> nextType = this.nextType.unifiable();
-		Unifiable<LOption<String>> nextLocation = this.nextLocation.unifiable();
-		Unifiable<LOption<String>> nextVoyage = this.nextVoyage.unifiable();
-		Unifiable<Boolean> unloadedAtDestination = this.unloadedAtDestination.unifiable();
 		return Literal.relation(Delivery.class, "derived").args(this)
 				.solving(routingStatus(db, trackingId, routingStatus)
 						.and(transportStatus(db, trackingId, transportStatus))
@@ -159,18 +139,19 @@ public class Delivery implements Schema<Delivery> {
 		return staged.replacing(row.stored(staged), row.derived(staged));
 	}
 
-	/** A ground row as the value: absence as empty, the next activity from its three columns. */
-	public DeliveryDto toDto() {
+	/** A solution as the value: absence as empty, the next activity from its three columns. */
+	@Override
+	public DeliveryDto map(Solution s) {
 		return new DeliveryDto(
-				value(routingStatus),
-				value(transportStatus),
-				value(lastKnownLocation).toOptional(),
-				value(currentVoyage).toOptional(),
-				value(misdirected),
-				value(eta).toOptional(),
-				value(nextType).toOptional().map(type -> new HandlingActivityDto(type,
-						value(nextLocation).toOptional().get(),
-						value(nextVoyage).toOptional())),
-				value(unloadedAtDestination));
+				s.get(routingStatus).get(),
+				s.get(transportStatus).get(),
+				s.get(lastKnownLocation).get().toOptional(),
+				s.get(currentVoyage).get().toOptional(),
+				s.get(misdirected).get(),
+				s.get(eta).get().toOptional(),
+				s.get(nextType).get().toOptional().map(type -> new HandlingActivityDto(type,
+						s.get(nextLocation).get().toOptional().get(),
+						s.get(nextVoyage).get().toOptional())),
+				s.get(unloadedAtDestination).get());
 	}
 }

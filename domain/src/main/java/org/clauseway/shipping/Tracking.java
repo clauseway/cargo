@@ -19,7 +19,6 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
-import org.clauseway.pldb.relations.literals.Question;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.CargoRules;
 import org.clauseway.shipping.cargo.dto.DeliveryDto;
@@ -48,8 +47,7 @@ public final class Tracking {
 	/** The cargo's handling events, distinct, in completion order. */
 	public List<HandlingEventDto> handlingHistoryOf(String trackingId) {
 		HandlingEvent event = HandlingEvent.fresh(lval(trackingId));
-		return Question.select(Query.of(History.event(db, event)), event)
-				.map(HandlingEvent::toDto)
+		return Query.of(History.event(db, event)).select(event).stream()
 				.sorted(Comparator.comparing(HandlingEventDto::getCompletionTime))
 				.collect(Collectors.toList());
 	}
@@ -57,9 +55,7 @@ public final class Tracking {
 	/** The most recently completed handling of the cargo, if any. */
 	public Optional<HandlingEventDto> lastEventOf(String trackingId) {
 		HandlingEvent event = HandlingEvent.fresh(lval(trackingId));
-		return Question.select(Query.of(History.lastEvent(db, event)), event)
-				.map(HandlingEvent::toDto)
-				.findFirst();
+		return Query.of(History.lastEvent(db, event)).select(event).stream().findFirst();
 	}
 
 	// -- itinerary: the legs and what they plan --------------------------------

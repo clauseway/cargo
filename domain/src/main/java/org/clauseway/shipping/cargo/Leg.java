@@ -5,15 +5,17 @@ package org.clauseway.shipping.cargo;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.shipping.Reads.value;
+import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
-import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
@@ -24,15 +26,15 @@ import org.clauseway.shipping.cargo.dto.LegDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class Leg implements Schema<Leg> {
+public final class Leg implements Schema<Map.Entry<Integer, LegDto>> {
 
-	final Term<String> trackingId;
-	final Term<Integer> index;
-	final Term<String> voyageNumber;
-	final Term<String> loadLocation;
-	final Term<String> unloadLocation;
-	final Term<Instant> loadTime;
-	final Term<Instant> unloadTime;
+	final Unifiable<String> trackingId;
+	final Unifiable<Integer> index;
+	final Unifiable<String> voyageNumber;
+	final Unifiable<String> loadLocation;
+	final Unifiable<String> unloadLocation;
+	final Unifiable<Instant> loadTime;
+	final Unifiable<Instant> unloadTime;
 
 	/** The cargo's legs with every column a fresh variable: the row a read selects. */
 	public static Leg fresh(Unifiable<String> trackingId) {
@@ -41,7 +43,7 @@ public final class Leg implements Schema<Leg> {
 
 	/** The cargo's legs with every column projected away: the row a rule probes, naming only the columns it cares about. */
 	static Leg probe(Unifiable<String> trackingId) {
-		return fresh(trackingId).probe().withTrackingId(trackingId);
+		return new Leg(trackingId, projected(), projected(), projected(), projected(), projected(), projected());
 	}
 
 	/** The leg at an index of the cargo's itinerary, as a fact. */
@@ -51,15 +53,8 @@ public final class Leg implements Schema<Leg> {
 	}
 
 	@Override
-	public Iterable<? extends Term<?>> members() {
+	public Iterable<? extends Unifiable<?>> keys() {
 		return Arrays.asList(trackingId, index, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Leg withMembers(Term<?>[] m) {
-		return new Leg((Term<String>) m[0], (Term<Integer>) m[1], (Term<String>) m[2],
-				(Term<String>) m[3], (Term<String>) m[4], (Term<Instant>) m[5], (Term<Instant>) m[6]);
 	}
 
 	@Override
@@ -79,8 +74,10 @@ public final class Leg implements Schema<Leg> {
 		return Literal.relation(Leg.class, "leg").args(this).from(db);
 	}
 
-	/** A ground row as the value; the index is the itinerary's, not the leg's. */
-	public LegDto toDto() {
-		return new LegDto(value(voyageNumber), value(loadLocation), value(unloadLocation), value(loadTime), value(unloadTime));
+	/** A solution as the leg at its index: the index is the itinerary's, not the leg's, so it rides beside the value. */
+	@Override
+	public Map.Entry<Integer, LegDto> map(Solution s) {
+		return new AbstractMap.SimpleImmutableEntry<>(s.get(index).get(), new LegDto(s.get(voyageNumber).get(),
+				s.get(loadLocation).get(), s.get(unloadLocation).get(), s.get(loadTime).get(), s.get(unloadTime).get()));
 	}
 }

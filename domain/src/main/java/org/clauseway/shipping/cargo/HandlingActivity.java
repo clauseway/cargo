@@ -4,15 +4,16 @@ package org.clauseway.shipping.cargo;
 // ABOUTME: the port and the voyage, read as a HandlingActivityDTO, probed by the rules that compare handlings to the plan.
 
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.shipping.Reads.value;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
@@ -21,13 +22,13 @@ import org.clauseway.shipping.handling.HandlingType;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class HandlingActivity implements Schema<HandlingActivity> {
+public final class HandlingActivity implements Schema<Map.Entry<Integer, HandlingActivityDto>> {
 
-	final Term<String> trackingId;
-	final Term<Integer> step;
-	final Term<HandlingType> type;
-	final Term<String> location;
-	final Term<LOption<String>> voyageNumber;
+	final Unifiable<String> trackingId;
+	final Unifiable<Integer> step;
+	final Unifiable<HandlingType> type;
+	final Unifiable<String> location;
+	final Unifiable<LOption<String>> voyageNumber;
 
 	/** The cargo's planned handlings with every column a fresh variable: the row a read selects. */
 	public static HandlingActivity fresh(Unifiable<String> trackingId) {
@@ -35,15 +36,8 @@ public final class HandlingActivity implements Schema<HandlingActivity> {
 	}
 
 	@Override
-	public Iterable<? extends Term<?>> members() {
+	public Iterable<? extends Unifiable<?>> keys() {
 		return Arrays.asList(trackingId, step, type, location, voyageNumber);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public HandlingActivity withMembers(Term<?>[] m) {
-		return new HandlingActivity((Term<String>) m[0], (Term<Integer>) m[1], (Term<HandlingType>) m[2],
-				(Term<String>) m[3], (Term<LOption<String>>) m[4]);
 	}
 
 	@Override
@@ -56,8 +50,10 @@ public final class HandlingActivity implements Schema<HandlingActivity> {
 				Property.of("voyageNumber"));
 	}
 
-	/** A ground row as the value; the step is the plan's, not the activity's. */
-	public HandlingActivityDto toDto() {
-		return new HandlingActivityDto(value(type), value(location), value(voyageNumber).toOptional());
+	/** A solution as the handling at its step: the step is the plan's, not the activity's, so it rides beside the value. */
+	@Override
+	public Map.Entry<Integer, HandlingActivityDto> map(Solution s) {
+		return new AbstractMap.SimpleImmutableEntry<>(s.get(step).get(),
+				new HandlingActivityDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional()));
 	}
 }

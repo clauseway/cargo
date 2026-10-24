@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.pldb.inmemory.SharedDatabase;
-import org.clauseway.pldb.relations.literals.Question;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Delivery;
 import org.junit.Test;
@@ -66,7 +65,7 @@ public class DeliveryTest {
 	/** The rows the derived delivery answers for the cargo, as values. */
 	private static List<DeliveryDto> derived(Transaction db, String trackingId) {
 		Delivery delivery = Delivery.fresh(lval(trackingId));
-		return Question.select(Query.of(delivery.derived(db)), delivery).map(Delivery::toDto).collect(Collectors.toList());
+		return Query.of(delivery.derived(db)).select(delivery).stream().collect(Collectors.toList());
 	}
 
 	/** Booked and not routed: nothing is known, so every partial field is empty and both flags are off. */

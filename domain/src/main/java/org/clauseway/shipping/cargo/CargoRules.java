@@ -87,7 +87,7 @@ public final class CargoRules {
 	/** The itinerary's first leg: the one at index 0. */
 	public static Literal<Leg> firstLeg(AnswerSource db, Leg leg) {
 		return Literal.relation(CargoRules.class, "firstLeg").args(leg)
-				.solving(leg.stored(db).and(leg.index.unifiable().unifies(0)));
+				.solving(leg.stored(db).and(leg.index.unifies(0)));
 	}
 
 	/** The index of the itinerary's last leg: one with no leg at the next index. */
@@ -106,7 +106,7 @@ public final class CargoRules {
 	/** The itinerary's last leg. */
 	public static Literal<Leg> lastLeg(AnswerSource db, Leg leg) {
 		return Literal.relation(CargoRules.class, "lastLeg").args(leg)
-				.solving(leg.stored(db).and(lastIndex(db, leg.trackingId.unifiable(), leg.index.unifiable())));
+				.solving(leg.stored(db).and(lastIndex(db, leg.trackingId, leg.index)));
 	}
 
 	/**
@@ -117,34 +117,30 @@ public final class CargoRules {
 	 * anywhere.
 	 */
 	public static Literal<HandlingActivity> plannedHandling(AnswerSource db, HandlingActivity planned) {
-		Unifiable<String> trackingId = planned.trackingId.unifiable();
-		Unifiable<Integer> step = planned.step.unifiable();
-		Unifiable<HandlingType> type = planned.type.unifiable();
-		Unifiable<LOption<String>> voyageNumber = planned.voyageNumber.unifiable();
 		Unifiable<Integer> index = lvar();
 		Unifiable<Integer> twice = lvar();
 		Unifiable<String> legVoyage = lvar();
 		return Literal.relation(CargoRules.class, "plannedHandling").args(planned)
-				.solving(type.unifies(HandlingType.RECEIVE)
+				.solving(planned.type.unifies(HandlingType.RECEIVE)
 						.and(firstLeg(db, new Leg(planned.trackingId, projected(), projected(), planned.location, projected(), projected(), projected())))
-						.and(step.unifies(0))
-						.and(voyageNumber.unifies(none()))
-						.or(type.unifies(HandlingType.LOAD)
+						.and(planned.step.unifies(0))
+						.and(planned.voyageNumber.unifies(none()))
+						.or(planned.type.unifies(HandlingType.LOAD)
 								.and(new Leg(planned.trackingId, index, legVoyage, planned.location, projected(), projected(), projected()).stored(db))
-								.and(voyageNumber.unifies(some(legVoyage)))
+								.and(planned.voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(1), step)))
-						.or(type.unifies(HandlingType.UNLOAD)
+								.and(Ints.addo(twice, lval(1), planned.step)))
+						.or(planned.type.unifies(HandlingType.UNLOAD)
 								.and(new Leg(planned.trackingId, index, legVoyage, projected(), planned.location, projected(), projected()).stored(db))
-								.and(voyageNumber.unifies(some(legVoyage)))
+								.and(planned.voyageNumber.unifies(some(legVoyage)))
 								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(2), step)))
-						.or(type.unifies(HandlingType.CLAIM)
+								.and(Ints.addo(twice, lval(2), planned.step)))
+						.or(planned.type.unifies(HandlingType.CLAIM)
 								.and(new Leg(planned.trackingId, index, projected(), projected(), planned.location, projected(), projected()).stored(db))
-								.and(lastIndex(db, trackingId, index))
+								.and(lastIndex(db, planned.trackingId, index))
 								.and(Ints.multo(index, lval(2), twice))
-								.and(Ints.addo(twice, lval(3), step))
-								.and(voyageNumber.unifies(none()))));
+								.and(Ints.addo(twice, lval(3), planned.step))
+								.and(planned.voyageNumber.unifies(none()))));
 	}
 
 	/**
