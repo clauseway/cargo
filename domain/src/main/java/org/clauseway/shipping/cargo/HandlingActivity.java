@@ -15,12 +15,12 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Property;
-import org.clauseway.pldb.relations.Row;
+import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.handling.HandlingType;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class HandlingActivity implements Row<HandlingActivity> {
+public final class HandlingActivity implements Schema<HandlingActivity> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<Integer> step;

@@ -16,11 +16,11 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Property;
-import org.clauseway.pldb.relations.Row;
+import org.clauseway.pldb.relations.Schema;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class HandlingEvent implements Row<HandlingEvent> {
+public final class HandlingEvent implements Schema<HandlingEvent> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<HandlingType> type;

@@ -36,14 +36,14 @@ import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Rows;
-import org.clauseway.pldb.relations.Row;
+import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.handling.HandlingType;
 
 @With
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Delivery implements Row<Delivery> {
+public class Delivery implements Schema<Delivery> {
 
 	// -- the row: the key and the ten columns, as variables ------------------
 	Unifiable<String> trackingId;

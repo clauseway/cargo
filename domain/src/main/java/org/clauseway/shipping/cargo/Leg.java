@@ -18,12 +18,12 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
-import org.clauseway.pldb.relations.Row;
+import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.relations.Rows;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class Leg implements Row<Leg> {
+public final class Leg implements Schema<Leg> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<Integer> index;
