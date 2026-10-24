@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.literals.Literal;
 
@@ -34,7 +35,7 @@ public final class Reads {
 	}
 
 	/** A ground column's value; a row that was not selected has none. */
-	public static <T> T value(Unifiable<T> column) {
+	public static <T> T value(Term<T> column) {
 		return column.asVal().orElseThrow(() -> new IllegalStateException("not a ground row: " + column));
 	}
 }

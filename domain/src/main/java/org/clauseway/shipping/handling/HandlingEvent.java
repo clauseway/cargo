@@ -22,11 +22,11 @@ import org.clauseway.pldb.relations.Schema;
 @With
 public final class HandlingEvent implements Schema<HandlingEvent> {
 
-	final Unifiable<String> trackingId;
-	final Unifiable<HandlingType> type;
-	final Unifiable<String> location;
-	final Unifiable<LOption<String>> voyageNumber;
-	final Unifiable<Instant> completed;
+	final Term<String> trackingId;
+	final Term<HandlingType> type;
+	final Term<String> location;
+	final Term<LOption<String>> voyageNumber;
+	final Term<Instant> completed;
 
 	/** The cargo's handlings with every column a fresh variable: the row a read selects. */
 	public static HandlingEvent fresh(Unifiable<String> trackingId) {
@@ -41,8 +41,8 @@ public final class HandlingEvent implements Schema<HandlingEvent> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public HandlingEvent withMembers(Term<?>[] m) {
-		return new HandlingEvent((Unifiable<String>) m[0], (Unifiable<HandlingType>) m[1], (Unifiable<String>) m[2],
-				(Unifiable<LOption<String>>) m[3], (Unifiable<Instant>) m[4]);
+		return new HandlingEvent((Term<String>) m[0], (Term<HandlingType>) m[1], (Term<String>) m[2],
+				(Term<LOption<String>>) m[3], (Term<Instant>) m[4]);
 	}
 
 	@Override

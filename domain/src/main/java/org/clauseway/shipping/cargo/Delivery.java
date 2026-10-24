@@ -48,17 +48,17 @@ import org.clauseway.shipping.handling.HandlingType;
 public class Delivery implements Schema<Delivery> {
 
 	// -- the row: the key and the ten columns, as variables ------------------
-	Unifiable<String> trackingId;
-	Unifiable<RoutingStatus> routingStatus;
-	Unifiable<TransportStatus> transportStatus;
-	Unifiable<LOption<String>> lastKnownLocation;
-	Unifiable<LOption<String>> currentVoyage;
-	Unifiable<Boolean> misdirected;
-	Unifiable<LOption<Instant>> eta;
-	Unifiable<LOption<HandlingType>> nextType;
-	Unifiable<LOption<String>> nextLocation;
-	Unifiable<LOption<String>> nextVoyage;
-	Unifiable<Boolean> unloadedAtDestination;
+	Term<String> trackingId;
+	Term<RoutingStatus> routingStatus;
+	Term<TransportStatus> transportStatus;
+	Term<LOption<String>> lastKnownLocation;
+	Term<LOption<String>> currentVoyage;
+	Term<Boolean> misdirected;
+	Term<LOption<Instant>> eta;
+	Term<LOption<HandlingType>> nextType;
+	Term<LOption<String>> nextLocation;
+	Term<LOption<String>> nextVoyage;
+	Term<Boolean> unloadedAtDestination;
 
 	/** The cargo's row with every column a fresh variable: the row a question and its template share. */
 	public static Delivery fresh(Unifiable<String> trackingId) {
@@ -81,10 +81,10 @@ public class Delivery implements Schema<Delivery> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Delivery withMembers(Term<?>[] m) {
-		return new Delivery((Unifiable<String>) m[0], (Unifiable<RoutingStatus>) m[1], (Unifiable<TransportStatus>) m[2],
-				(Unifiable<LOption<String>>) m[3], (Unifiable<LOption<String>>) m[4], (Unifiable<Boolean>) m[5],
-				(Unifiable<LOption<Instant>>) m[6], (Unifiable<LOption<HandlingType>>) m[7],
-				(Unifiable<LOption<String>>) m[8], (Unifiable<LOption<String>>) m[9], (Unifiable<Boolean>) m[10]);
+		return new Delivery((Term<String>) m[0], (Term<RoutingStatus>) m[1], (Term<TransportStatus>) m[2],
+				(Term<LOption<String>>) m[3], (Term<LOption<String>>) m[4], (Term<Boolean>) m[5],
+				(Term<LOption<Instant>>) m[6], (Term<LOption<HandlingType>>) m[7],
+				(Term<LOption<String>>) m[8], (Term<LOption<String>>) m[9], (Term<Boolean>) m[10]);
 	}
 
 	@Override
@@ -117,6 +117,17 @@ public class Delivery implements Schema<Delivery> {
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
 	public Literal<Delivery> derived(AnswerSource db) {
+		Unifiable<String> trackingId = this.trackingId.unifiable();
+		Unifiable<RoutingStatus> routingStatus = this.routingStatus.unifiable();
+		Unifiable<TransportStatus> transportStatus = this.transportStatus.unifiable();
+		Unifiable<LOption<String>> lastKnownLocation = this.lastKnownLocation.unifiable();
+		Unifiable<LOption<String>> currentVoyage = this.currentVoyage.unifiable();
+		Unifiable<Boolean> misdirected = this.misdirected.unifiable();
+		Unifiable<LOption<Instant>> eta = this.eta.unifiable();
+		Unifiable<LOption<HandlingType>> nextType = this.nextType.unifiable();
+		Unifiable<LOption<String>> nextLocation = this.nextLocation.unifiable();
+		Unifiable<LOption<String>> nextVoyage = this.nextVoyage.unifiable();
+		Unifiable<Boolean> unloadedAtDestination = this.unloadedAtDestination.unifiable();
 		return Literal.relation(Delivery.class, "derived").args(this)
 				.solving(routingStatus(db, trackingId, routingStatus)
 						.and(transportStatus(db, trackingId, transportStatus))

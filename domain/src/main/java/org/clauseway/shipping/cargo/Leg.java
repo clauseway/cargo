@@ -26,13 +26,13 @@ import org.clauseway.shipping.cargo.dto.LegDto;
 @With
 public final class Leg implements Schema<Leg> {
 
-	final Unifiable<String> trackingId;
-	final Unifiable<Integer> index;
-	final Unifiable<String> voyageNumber;
-	final Unifiable<String> loadLocation;
-	final Unifiable<String> unloadLocation;
-	final Unifiable<Instant> loadTime;
-	final Unifiable<Instant> unloadTime;
+	final Term<String> trackingId;
+	final Term<Integer> index;
+	final Term<String> voyageNumber;
+	final Term<String> loadLocation;
+	final Term<String> unloadLocation;
+	final Term<Instant> loadTime;
+	final Term<Instant> unloadTime;
 
 	/** The cargo's legs with every column a fresh variable: the row a read selects. */
 	public static Leg fresh(Unifiable<String> trackingId) {
@@ -58,8 +58,8 @@ public final class Leg implements Schema<Leg> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Leg withMembers(Term<?>[] m) {
-		return new Leg((Unifiable<String>) m[0], (Unifiable<Integer>) m[1], (Unifiable<String>) m[2],
-				(Unifiable<String>) m[3], (Unifiable<String>) m[4], (Unifiable<Instant>) m[5], (Unifiable<Instant>) m[6]);
+		return new Leg((Term<String>) m[0], (Term<Integer>) m[1], (Term<String>) m[2],
+				(Term<String>) m[3], (Term<String>) m[4], (Term<Instant>) m[5], (Term<Instant>) m[6]);
 	}
 
 	@Override

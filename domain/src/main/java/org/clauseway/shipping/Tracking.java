@@ -47,7 +47,8 @@ public final class Tracking {
 
 	/** The cargo's handling events, distinct, in completion order. */
 	public List<HandlingEventDto> handlingHistoryOf(String trackingId) {
-		return Question.select(History.event(db, HandlingEvent.fresh(lval(trackingId))))
+		HandlingEvent event = HandlingEvent.fresh(lval(trackingId));
+		return Question.select(Query.of(History.event(db, event)), event)
 				.map(HandlingEvent::toDto)
 				.sorted(Comparator.comparing(HandlingEventDto::getCompletionTime))
 				.collect(Collectors.toList());
@@ -55,7 +56,8 @@ public final class Tracking {
 
 	/** The most recently completed handling of the cargo, if any. */
 	public Optional<HandlingEventDto> lastEventOf(String trackingId) {
-		return Question.select(History.lastEvent(db, HandlingEvent.fresh(lval(trackingId))))
+		HandlingEvent event = HandlingEvent.fresh(lval(trackingId));
+		return Question.select(Query.of(History.lastEvent(db, event)), event)
 				.map(HandlingEvent::toDto)
 				.findFirst();
 	}

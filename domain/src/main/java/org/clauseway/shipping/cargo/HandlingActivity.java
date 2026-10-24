@@ -23,11 +23,11 @@ import org.clauseway.shipping.handling.HandlingType;
 @With
 public final class HandlingActivity implements Schema<HandlingActivity> {
 
-	final Unifiable<String> trackingId;
-	final Unifiable<Integer> step;
-	final Unifiable<HandlingType> type;
-	final Unifiable<String> location;
-	final Unifiable<LOption<String>> voyageNumber;
+	final Term<String> trackingId;
+	final Term<Integer> step;
+	final Term<HandlingType> type;
+	final Term<String> location;
+	final Term<LOption<String>> voyageNumber;
 
 	/** The cargo's planned handlings with every column a fresh variable: the row a read selects. */
 	public static HandlingActivity fresh(Unifiable<String> trackingId) {
@@ -42,8 +42,8 @@ public final class HandlingActivity implements Schema<HandlingActivity> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public HandlingActivity withMembers(Term<?>[] m) {
-		return new HandlingActivity((Unifiable<String>) m[0], (Unifiable<Integer>) m[1], (Unifiable<HandlingType>) m[2],
-				(Unifiable<String>) m[3], (Unifiable<LOption<String>>) m[4]);
+		return new HandlingActivity((Term<String>) m[0], (Term<Integer>) m[1], (Term<HandlingType>) m[2],
+				(Term<String>) m[3], (Term<LOption<String>>) m[4]);
 	}
 
 	@Override

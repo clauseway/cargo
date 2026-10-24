@@ -17,11 +17,11 @@ import org.clauseway.shipping.cargo.dto.LegDto;
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 public final class CandidateLeg implements Structural<CandidateLeg> {
 
-	final Unifiable<String> voyageNumber;
-	final Unifiable<String> loadLocation;
-	final Unifiable<String> unloadLocation;
-	final Unifiable<Instant> loadTime;
-	final Unifiable<Instant> unloadTime;
+	final Term<String> voyageNumber;
+	final Term<String> loadLocation;
+	final Term<String> unloadLocation;
+	final Term<Instant> loadTime;
+	final Term<Instant> unloadTime;
 
 	@Override
 	public Iterable<? extends Term<?>> members() {
@@ -31,8 +31,8 @@ public final class CandidateLeg implements Structural<CandidateLeg> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public CandidateLeg withMembers(Term<?>[] m) {
-		return new CandidateLeg((Unifiable<String>) m[0], (Unifiable<String>) m[1], (Unifiable<String>) m[2],
-				(Unifiable<Instant>) m[3], (Unifiable<Instant>) m[4]);
+		return new CandidateLeg((Term<String>) m[0], (Term<String>) m[1], (Term<String>) m[2],
+				(Term<Instant>) m[3], (Term<Instant>) m[4]);
 	}
 
 	/** A ground leg as the value. */

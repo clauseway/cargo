@@ -65,7 +65,7 @@ public final class History {
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
 	public static Literal<HandlingEvent> event(AnswerSource db, HandlingEvent event) {
 		return Literal.relation(History.class, "event").args(event)
-				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected()));
+				.solving(handlingEvent(db, event.trackingId.unifiable(), event.type.unifiable(), event.location.unifiable(), event.voyageNumber.unifiable(), event.completed.unifiable(), projected()));
 	}
 
 	/** The cargo has been handled at all. */
@@ -138,8 +138,8 @@ public final class History {
 	/** The most recently completed handling: an event with none later. */
 	public static Literal<HandlingEvent> lastEvent(AnswerSource db, HandlingEvent event) {
 		return Literal.relation(History.class, "lastEvent").args(event)
-				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected())
-						.and(exclude(later(db, event.trackingId, event.completed))));
+				.solving(handlingEvent(db, event.trackingId.unifiable(), event.type.unifiable(), event.location.unifiable(), event.voyageNumber.unifiable(), event.completed.unifiable(), projected())
+						.and(exclude(later(db, event.trackingId.unifiable(), event.completed.unifiable()))));
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */
