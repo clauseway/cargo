@@ -19,17 +19,17 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 public final class Reads {
 
 	/** The first answer for one variable of a goal, if any. */
-	public static <T> Optional<T> first(Literal goal, Unifiable<T> out) {
+	public static <T> Optional<T> first(Literal<?> goal, Unifiable<T> out) {
 		return Query.of(goal).solve(out).findFirst().map(Reified::get);
 	}
 
 	/** Whether a ground goal has an answer at all. */
-	public static boolean holds(Literal goal) {
+	public static boolean holds(Literal<?> goal) {
 		return Query.of(goal).solve(lval(true)).findAny().isPresent();
 	}
 
 	/** Every answer for one variable of a goal. */
-	public static <T> List<T> values(Literal goal, Unifiable<T> out) {
+	public static <T> List<T> values(Literal<?> goal, Unifiable<T> out) {
 		return Query.of(goal).solve(out).map(Reified::get).collect(Collectors.toList());
 	}
 

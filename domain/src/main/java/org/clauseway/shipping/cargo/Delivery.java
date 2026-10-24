@@ -35,7 +35,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
-import org.clauseway.pldb.relations.Rows;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.dto.DeliveryDto;
@@ -106,8 +105,8 @@ public class Delivery implements Schema<Delivery> {
 	// -- the two faces: stored, and derived from the rules -------------------
 
 	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
-	Rows<Delivery> stored(AnswerSource db) {
-		return Literal.relation(Delivery.class, "delivery").rows(this).from(db);
+	Literal<Delivery> stored(AnswerSource db) {
+		return Literal.relation(Delivery.class, "delivery").args(this).from(db);
 	}
 
 	/**
@@ -116,25 +115,25 @@ public class Delivery implements Schema<Delivery> {
 	 * columns — the value where the rule holds, none where it does not — and
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
-	public Rows<Delivery> derived(AnswerSource db) {
-		return Literal.relation(Delivery.class, "derived").rows(this)
-				.solving(r -> routingStatus(db, r.trackingId, r.routingStatus)
-						.and(transportStatus(db, r.trackingId, r.transportStatus))
-						.and(option(location -> lastKnownLocation(db, r.trackingId, location), r.lastKnownLocation))
-						.and(option(voyage -> currentVoyage(db, r.trackingId, voyage), r.currentVoyage))
-						.and(flag(misdirected(db, r.trackingId), r.misdirected))
-						.and(option(time -> eta(db, r.trackingId, time), r.eta))
+	public Literal<Delivery> derived(AnswerSource db) {
+		return Literal.relation(Delivery.class, "derived").args(this)
+				.solving(routingStatus(db, trackingId, routingStatus)
+						.and(transportStatus(db, trackingId, transportStatus))
+						.and(option(location -> lastKnownLocation(db, trackingId, location), lastKnownLocation))
+						.and(option(voyage -> currentVoyage(db, trackingId, voyage), currentVoyage))
+						.and(flag(misdirected(db, trackingId), misdirected))
+						.and(option(time -> eta(db, trackingId, time), eta))
 						.and(defer(() -> {
 							Unifiable<HandlingType> type = lvar();
 							Unifiable<String> location = lvar();
-							return nextExpectedActivity(db, r.trackingId, type, location, r.nextVoyage)
-									.and(r.nextType.unifies(some(type)))
-									.and(r.nextLocation.unifies(some(location)));
-						}).or(exclude(nextExpectedActivity(db, r.trackingId, projected(), projected(), projected()))
-								.and(r.nextType.unifies(none()))
-								.and(r.nextLocation.unifies(none()))
-								.and(r.nextVoyage.unifies(none()))))
-						.and(flag(unloadedAtDestination(db, r.trackingId), r.unloadedAtDestination)));
+							return nextExpectedActivity(db, trackingId, type, location, nextVoyage)
+									.and(nextType.unifies(some(type)))
+									.and(nextLocation.unifies(some(location)));
+						}).or(exclude(nextExpectedActivity(db, trackingId, projected(), projected(), projected()))
+								.and(nextType.unifies(none()))
+								.and(nextLocation.unifies(none()))
+								.and(nextVoyage.unifies(none()))))
+						.and(flag(unloadedAtDestination(db, trackingId), unloadedAtDestination)));
 	}
 
 	// -- the refresh, and the value ------------------------------------------

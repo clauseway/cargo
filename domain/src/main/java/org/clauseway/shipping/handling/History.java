@@ -24,7 +24,7 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.Literal;
-import org.clauseway.pldb.relations.Rows;
+import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.cargo.CargoRules;
@@ -46,55 +46,63 @@ public final class History {
 	 * voyage. A handling reported twice is two rows; every rule projects the
 	 * registration time away, so it is one event.
 	 */
-	static Literal handlingEvent(AnswerSource db, Unifiable<String> trackingId,
+	static Literal<?> handlingEvent(AnswerSource db, Unifiable<String> trackingId,
 			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber,
 			Unifiable<Instant> completionTime, Unifiable<Instant> registrationTime) {
 		return Literal.relation(History.class, "handlingEvent")
-				.arg("trackingId", trackingId).indexed()
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.arg("completionTime", completionTime)
-				.arg("registrationTime", registrationTime)
+				.args(Schema.builder()
+						.arg("trackingId", trackingId).indexed()
+						.arg("type", type)
+						.arg("location", location)
+						.arg("voyageNumber", voyageNumber)
+						.arg("completionTime", completionTime)
+						.arg("registrationTime", registrationTime)
+						.build())
 				.from(db);
 	}
 
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
-	public static Rows<HandlingEvent> event(AnswerSource db, HandlingEvent event) {
-		return Literal.relation(History.class, "event").rows(event)
-				.solving(e -> handlingEvent(db, e.trackingId, e.type, e.location, e.voyageNumber, e.completed, projected()));
+	public static Literal<HandlingEvent> event(AnswerSource db, HandlingEvent event) {
+		return Literal.relation(History.class, "event").args(event)
+				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected()));
 	}
 
 	/** The cargo has been handled at all. */
-	public static Literal anyEvent(AnswerSource db, Unifiable<String> trackingId) {
+	public static Literal<?> anyEvent(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(History.class, "anyEvent")
-				.arg("trackingId", trackingId)
+				.args(Schema.builder()
+						.arg("trackingId", trackingId)
+						.build())
 				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), projected(), projected()));
 	}
 
 	/** Some handling of the cargo completed after the given time. */
-	public static Literal later(AnswerSource db, Unifiable<String> trackingId, Unifiable<Instant> time) {
+	public static Literal<?> later(AnswerSource db, Unifiable<String> trackingId, Unifiable<Instant> time) {
 		Unifiable<Instant> completed = lvar();
 		return Literal.relation(History.class, "later")
-				.arg("trackingId", trackingId)
-				.arg("time", time)
+				.args(Schema.builder()
+						.arg("trackingId", trackingId)
+						.arg("time", time)
+						.build())
 				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), completed, projected())
 						.and(Instants.lss(time, completed)));
 	}
 
 	/** Whether a handling kind names a voyage: the enum's flag, as a relation over its own facts. */
-	private static Literal handlingKind(AnswerSource table, Unifiable<HandlingType> type,
+	private static Literal<?> handlingKind(AnswerSource table, Unifiable<HandlingType> type,
 			Unifiable<Boolean> voyageRequired) {
 		return Literal.relation(History.class, "handlingKind")
-				.arg("type", type)
-				.arg("voyageRequired", voyageRequired)
+				.args(Schema.builder()
+						.arg("type", type)
+						.arg("voyageRequired", voyageRequired)
+						.build())
 				.from(table);
 	}
 
 	private static final AnswerStore HANDLING_KINDS = AnswerStore.empty().asserting(
 			Arrays.stream(HandlingType.values())
 					.map(type -> handlingKind(null, lval(type), lval(type.requiresVoyage())))
-					.toArray(Literal[]::new));
+					.toArray(Literal<?>[]::new));
 
 	/**
 	 * HandlingEventFactory and the HandlingEvent constructors as one
@@ -103,14 +111,16 @@ public final class History {
 	 * a known one, the others name none. Registration is allowed when there
 	 * are no denials.
 	 */
-	public static Literal registrationDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
+	public static Literal<?> registrationDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<String> reason) {
 		return Literal.relation(History.class, "registrationDenial")
-				.arg("trackingId", trackingId)
-				.arg("type", type)
-				.arg("location", location)
-				.arg("voyageNumber", voyageNumber)
-				.arg("reason", reason)
+				.args(Schema.builder()
+						.arg("trackingId", trackingId)
+						.arg("type", type)
+						.arg("location", location)
+						.arg("voyageNumber", voyageNumber)
+						.arg("reason", reason)
+						.build())
 				.solving(exclude(CargoRules.known(db, trackingId))
 						.and(reason.unifies("unknown cargo"))
 						.or(exclude(Locations.known(db, location))
@@ -125,10 +135,10 @@ public final class History {
 	}
 
 	/** The most recently completed handling: an event with none later. */
-	public static Rows<HandlingEvent> lastEvent(AnswerSource db, HandlingEvent event) {
-		return Literal.relation(History.class, "lastEvent").rows(event)
-				.solving(e -> handlingEvent(db, e.trackingId, e.type, e.location, e.voyageNumber, e.completed, projected())
-						.and(exclude(later(db, e.trackingId, e.completed))));
+	public static Literal<HandlingEvent> lastEvent(AnswerSource db, HandlingEvent event) {
+		return Literal.relation(History.class, "lastEvent").args(event)
+				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected())
+						.and(exclude(later(db, event.trackingId, event.completed))));
 	}
 
 	/** Every rule the registration would violate, by name; empty means allowed. */

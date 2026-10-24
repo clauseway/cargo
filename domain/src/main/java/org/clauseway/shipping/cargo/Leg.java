@@ -19,7 +19,6 @@ import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
-import org.clauseway.pldb.relations.Rows;
 import org.clauseway.shipping.cargo.dto.LegDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
@@ -75,8 +74,8 @@ public final class Leg implements Schema<Leg> {
 	}
 
 	/** The legs as stored; the index is the itinerary's order. */
-	Rows<Leg> stored(AnswerSource db) {
-		return Literal.relation(Leg.class, "leg").rows(this).from(db);
+	Literal<Leg> stored(AnswerSource db) {
+		return Literal.relation(Leg.class, "leg").args(this).from(db);
 	}
 
 	/** A ground row as the value; the index is the itinerary's, not the leg's. */

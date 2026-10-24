@@ -19,7 +19,6 @@ import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
-import org.clauseway.pldb.relations.Rows;
 import org.clauseway.shipping.cargo.dto.RouteSpecificationDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
@@ -64,8 +63,8 @@ public final class RouteSpecification implements Schema<RouteSpecification> {
 	}
 
 	/** The specification as stored: one row per cargo, replaced whole when the customer re-specifies. */
-	Rows<RouteSpecification> stored(AnswerSource db) {
-		return Literal.relation(RouteSpecification.class, "routeSpecification").rows(this).from(db);
+	Literal<RouteSpecification> stored(AnswerSource db) {
+		return Literal.relation(RouteSpecification.class, "routeSpecification").args(this).from(db);
 	}
 
 	/** A ground row as the value. */

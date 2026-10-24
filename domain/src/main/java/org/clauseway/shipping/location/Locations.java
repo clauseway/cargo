@@ -9,22 +9,27 @@ import static org.clauseway.pldb.relations.Projected.projected;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 
 public final class Locations {
 
 	/** A port, by UN/LOCODE. */
-	static Literal location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
+	static Literal<?> location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
 		return Literal.relation(Locations.class, "location")
-				.arg("unlocode", unlocode).indexed()
-				.arg("name", name)
+				.args(Schema.builder()
+						.arg("unlocode", unlocode).indexed()
+						.arg("name", name)
+						.build())
 				.from(db);
 	}
 
 	/** The port is known. */
-	public static Literal known(AnswerSource db, Unifiable<String> unlocode) {
+	public static Literal<?> known(AnswerSource db, Unifiable<String> unlocode) {
 		return Literal.relation(Locations.class, "known")
-				.arg("unlocode", unlocode)
+				.args(Schema.builder()
+						.arg("unlocode", unlocode)
+						.build())
 				.solving(location(db, unlocode, projected()));
 	}
 
