@@ -24,6 +24,7 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
+import org.clauseway.pldb.relations.literals.Question;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
 import org.clauseway.shipping.cargo.dto.DeliveryDto;
@@ -40,30 +41,30 @@ public final class Cargo {
 	// -- the parts, as values ----------------------------------------------
 
 	public Optional<RouteSpecificationDto> routeSpecificationOf(String trackingId) {
-		return RouteSpecification.fresh(lval(trackingId)).stored(db).select()
+		return Question.select(RouteSpecification.fresh(lval(trackingId)).stored(db))
 				.map(RouteSpecification::toDto)
 				.findFirst();
 	}
 
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
 	public List<LegDto> itineraryOf(String trackingId) {
-		return Leg.fresh(lval(trackingId)).stored(db).select()
+		return Question.select(Leg.fresh(lval(trackingId)).stored(db))
 				.sorted(Comparator.comparing((Leg leg) -> leg.index.get()))
 				.map(Leg::toDto)
 				.collect(Collectors.toList());
 	}
 
 	public Optional<LegDto> firstLegOf(String trackingId) {
-		return CargoRules.firstLeg(db, Leg.fresh(lval(trackingId))).select().map(Leg::toDto).findFirst();
+		return Question.select(CargoRules.firstLeg(db, Leg.fresh(lval(trackingId)))).map(Leg::toDto).findFirst();
 	}
 
 	public Optional<LegDto> lastLegOf(String trackingId) {
-		return CargoRules.lastLeg(db, Leg.fresh(lval(trackingId))).select().map(Leg::toDto).findFirst();
+		return Question.select(CargoRules.lastLeg(db, Leg.fresh(lval(trackingId)))).map(Leg::toDto).findFirst();
 	}
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
 	public List<HandlingActivityDto> planOf(String trackingId) {
-		return CargoRules.plannedHandling(db, HandlingActivity.fresh(lval(trackingId))).select()
+		return Question.select(CargoRules.plannedHandling(db, HandlingActivity.fresh(lval(trackingId))))
 				.sorted(Comparator.comparing((HandlingActivity planned) -> planned.step.get()))
 				.map(HandlingActivity::toDto)
 				.collect(Collectors.toList());
@@ -71,7 +72,7 @@ public final class Cargo {
 
 	/** The cargo's delivery as its commands last stored it. */
 	public DeliveryDto deliveryOf(String trackingId) {
-		return Delivery.fresh(lval(trackingId)).stored(db).select()
+		return Question.select(Delivery.fresh(lval(trackingId)).stored(db))
 				.map(Delivery::toDto)
 				.findFirst()
 				.orElseThrow(() -> new IllegalStateException("no such cargo: " + trackingId));
