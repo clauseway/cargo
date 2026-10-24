@@ -11,8 +11,8 @@ import java.time.Instant;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
-import org.clauseway.pldb.relations.External;
-import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.literals.External;
+import org.clauseway.pldb.relations.literals.Literal;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 

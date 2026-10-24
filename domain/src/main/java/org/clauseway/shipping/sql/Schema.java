@@ -11,7 +11,7 @@ import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.literals.Literal;
 import org.clauseway.pldb.sql.Codec;
 import org.clauseway.pldb.sql.SerializableSource;
 import org.clauseway.shipping.cargo.Cargo;

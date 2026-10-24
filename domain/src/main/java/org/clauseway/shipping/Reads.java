@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
-import org.clauseway.pldb.relations.Literal;
+import org.clauseway.pldb.relations.literals.Literal;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 
