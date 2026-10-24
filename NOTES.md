@@ -43,6 +43,17 @@ as informative as one that does.
   P3 stays open for the derived side.
 - dddsample dedups handling events by value (`distinctEventsByCompletionTime`
   through a `HashSet`). Facts are values here, so that dedup is free (entry 1).
+- A column a rule body does not care about is `projected()`, never a fresh
+  `lvar()`; `lvar()` means the variable occurs twice. Tom's rule, for a reason
+  the engine's own note on absence names: a free `lvar()` under `exclude` is
+  indistinguishable from a variable a sibling will bind, so the nogood never
+  fires and the branch survives. Spelled as a projection from the start, a
+  literal keeps its meaning when it moves under `exclude`, and the three
+  places that said `projected()` only because they were negated stopped
+  being special. Applying it found that the marker was not a variable to
+  the finite domain (`plannedHandling`'s step column, projected by
+  `expected`, met `Ints.addo`): pldb's `MagicVar` now delegates `getVar`,
+  with the receipt and the pothole receipt beside it in `ProjectedTest`.
 
 ## 1. Identity is the rule head's projection
 
@@ -591,3 +602,560 @@ test say so.
 
 Not checked by this test, still owed to the oracle: the four
 divergences in entry 9, none of which the scenario's path crosses.
+
+## 11. Where the port was looser than the original, and what was done about it
+
+The audit (entry 9) read for divergence in derived state. Read again
+for what each side refuses, the port was the looser one in eight
+places. dddsample refuses by construction — constructors that validate,
+unique columns, a factory that mints the id — and the port had carried
+over the derivation rules without the guards. Five became denial rules,
+three are recorded here and left.
+
+Fixed, each test first, each its own commit:
+
+- **A tracking id is booked once** (2059298). dddsample's `CargoFactory`
+  asks the repository for a fresh id and a unique column backs it; here
+  the id is given, so `bookingDenial` says "already booked" when the
+  cargo exists. The point worth the entry: a denial that reads absence
+  before a write is the P5 race shape, and it is safe because the read
+  is pinned — `RecordingTransaction` pins every probe, a probe that
+  found nothing included, and `SharedDatabase` pins at relation grain.
+  Two parallel bookings of one id both read "not there", the second
+  commit finds `cargo` moved and is refused (`CertifiedWriteTest`). On
+  Postgres, serializable isolation covers the same phantom. So the
+  rule is a key, not a check: uniqueness in a fact base is a negative
+  read certified at commit, and no sequence or generator is needed for
+  it. A generated id would be a different feature — booking returning
+  the id it minted, as the service does — and not this hole.
+- **A specification names known ports** (c8c6f5e). `specificationDenial`
+  reads the location relation for both ports, "unknown origin" and
+  "unknown destination"; booking and re-routing share it. dddsample
+  gets the refusal by accident, a null from the repository hitting the
+  constructor. The test worlds that book now declare dddsample's
+  sample locations (`SampleLocations`), as its in-memory repository
+  holds them.
+- **Assigning a route is a command** (45c31a6): the cargo must exist
+  (`routingDenial`, which `reroutingDenial` now shares) and the
+  itinerary has at least one leg — the `Itinerary` constructor's
+  `Validate.notEmpty`, checked at the facade where the legs are a list.
+  `assignToRoute` answers a `Try` like the other commands; a routed
+  cargo can no longer be un-routed by an empty assignment.
+- **A leg names a known voyage and known ports** (5ef1f09).
+  `legDenial`, solved per leg, reasons distinct. Their `Leg` takes the
+  objects, and a save with an unsaved voyage fails on flush; here the
+  names are checked when the route lands.
+- **The fact doors keep the constructors' guard** (f479513). A LOAD or
+  UNLOAD landed as a fact names a voyage, the port-side kinds never do,
+  `IllegalArgumentException` with dddsample's messages. The doors stay
+  doors — no lookups — because the tests land events on voyages and at
+  ports nothing was declared for, the way their tests construct
+  `HandlingEvent`s on sample objects.
+
+Recorded and left:
+
+- **A voyage with no schedule is admitted.** `withVoyage(number)` stands
+  alone; their `Schedule` requires at least one carrier movement. The
+  voyage relation and its movements are two relations here, and a
+  voyage with none is a voyage nothing sails; no rule reads it wrong.
+- **Values take nulls.** `Leg`, `RouteSpecification` and `HandlingEvent`
+  are Lombok values with no null checks; theirs validate every field.
+  What a null does once it reaches a literal has not been tested.
+- **Re-specification can change origin and deadline.** Their
+  `changeDestination` service keeps both; their domain method
+  `specifyNewRoute(spec)` accepts any specification, and their own
+  lifecycle scenario uses the domain method to move the origin to
+  Tokyo. The port sits at the domain level, and the transliterated
+  scenario (entry 10) needs it there. Looser than their service, equal
+  to their domain, kept.
+
+Not a looseness but found on the way: `index` on `leg` is the leg's
+position in the itinerary, and `step` in `plannedHandling` is the
+position of a planned handling in the sequence the legs imply, derived
+by arithmetic — receive at 0, leg i's load and unload at 2i+1 and 2i+2,
+claim one past the last unload. dddsample keeps the first in the order
+of a Java list, persisted without `@OrderColumn`, and the second in
+loop order; neither has a name there.
+
+## 12. The oracle: their code beside ours, and what it found on the first run
+
+Entry 9 read for divergence; entry 10 transliterated the one story
+they tell. Both depend on reading. The oracle does not: dddsample's
+domain packages, vendored verbatim at the pinned commit into a Java 17
+module beside the port (`oracle/`), are driven with the same bookings,
+routes and handlings as `Shipping`, and the delivery is compared field
+by field after every step. Their domain classes run as plain Java; the
+JPA annotations are inert, Spring never loads.
+
+Three tests. The lifecycle scenario, compared rather than asserted.
+Three explicit pins of the known divergences, each as both answers —
+MISROUTED there and NOT_ROUTED here for the unrouted cargo inspected
+after a handling; the NullPointerException there and the landing here
+for re-specifying it; the first leg there and the voyage-matched leg
+here for the next activity after a load at a port the itinerary calls
+at twice. And two hundred seeded random lifecycles over the sample
+schedule — routes the finder offers or legs cut from random voyages,
+handlings on plan seven times in ten and astray otherwise,
+re-specifications and re-routes mid-way — compared after every step:
+1295 comparisons, 93 of them with a divergence masked, 451 routed, 551
+misrouted, 483 misdirected, 140 claimed. The floors are in the test so
+a green run says what it reached.
+
+What the first run found was not in the deliveries. It was in the
+facade: run 14 re-assigned a route that kept its first leg, and the
+engine refused — the same leg fact retracted and asserted in one
+transaction, entry 4's rule. Re-specifying with the specification the
+cargo already has would have met it too. dddsample swaps the value and
+never notices overlap. The translation "retract the old value, assert
+the new" was wrong by exactly the intersection: `assignToRoute` now
+spends and lands only the legs that differ at their index, and the
+same specification again is the same world (ce6320a). Nothing in
+twelve test files had re-routed over a shared leg; the generator did
+it on its fourteenth try.
+
+After that fix, every comparison agrees. The port's derived state is
+their derived state on everything the generator reaches, less the two
+masked cases it was already known to differ on, and the denials and
+the certified write stay ours to test, because they have neither.
+
+## 13. Four aggregate packages: the boundary is visibility, the consistency is the footprint
+
+The README's open question was whether the port had an aggregate at
+all. It had the consistency half and not the access half: `Schema`
+was one public class, and any rule could read any relation. Tom's
+framing settled what the access half is for. An aggregate does two
+jobs. It keeps the invariants coherent, because imperative methods
+mutate state and the methods that share an invariant have to change
+together; and it keeps one aggregate to one transaction, because a
+transaction across stores is the thing nobody wants to maintain. The
+first job the port had by construction for everything derived — there
+is no stored delivery to go stale — but not for the write guards: a
+denial rule fires only if the command calls it, and nothing stopped a
+command from landing another aggregate's fact without asking. The
+second job it had on the write side and not on the read side.
+
+So: four packages, one per aggregate the sample has — `location`,
+`voyage`, `handling`, `cargo` — and the root package renamed from
+`cargo` to `shipping` so the aggregate could carry its own name
+(92459db). Each package declares its relations as package-private
+builders, so no code outside it can build a fact of them, which is to
+say no code outside it can assert or retract one. What crosses
+between packages is rules only: `Locations.known`, `Voyages.known`
+and `aboard`, `Cargo.known`, `specification` and `itinerary`,
+`History.event`, `lastEvent`, `anyEvent`. The writers sit beside the
+relations as static functions over the transaction — `Cargo.book`,
+`specify`, `route`; `History.register`; `Voyages.declare`,
+`schedule`; `Locations.declare` — and `Shipping` keeps only the
+order: denials, then the aggregate's writer. That is the sample's
+shape exactly: the application service calls a method on the root,
+and the root is the only thing that touches its own parts. `Tracking`
+lost its transaction field, since its three direct relation reads
+became rule reads; `Schema` shrank to the SQL composition point
+(41a5a42).
+
+One step further, because the first cut left the guard a discipline.
+The writer and its denial were two public functions: `Cargo.book`
+landed the facts and trusted its caller to have solved `bookingDenial`
+first, and the one caller always had. Tom's definition of the thing
+the refactor was for — the modifying methods live on the aggregate
+whose state they guard — is not met by a writer that trusts. So the
+writers solve their own denials and answer `Try<Transaction>`:
+`cargo.book`, `specify`, `route` and `history.register` are instance
+methods that refuse by name or land, and `Shipping` lifts the result
+into a `Shipping`. A writer that guards itself must also read its own
+current state, or a caller could hand `route` a stale itinerary to
+diff against; so the cargo's value reads — its specification, its
+legs, first and last — moved into the root as well, and `Tracking`
+delegates. The two tests that drove it call the root with no facade
+in between and are refused. What is left unguarded is deliberate and
+named: `History.land` and the schedule's writers are the fact door,
+the handlings and sailings a test declares as given.
+
+That left the denials with two channels: the refusal a writer answers,
+and the list a caller could ask `Tracking` for before trying. The list
+was a leftover of the facade solving the denials itself, kept so the
+test sites would not move, and used by nothing else. Closed: the
+denial lists are private to their roots, the four reads are gone from
+`Tracking`, and the refusal carries the names as a list —
+`Refusal.getDenials()` — so a test asserts on exactly the rules the
+command broke, in any order, off the outcome it got. One channel. A
+screen that wants to know what would fail before submitting is a read
+model to add when it exists, not a surface to keep in advance.
+
+Every crossing the move exposed has a twin in the sample. `History`'s
+registration denial reads cargo, location and voyage existence; the
+sample's `HandlingEventFactory` asks three repositories. `Routing`
+reads locations and voyages for its denials and the schedule for
+`candidate`; the sample's `RoutingService` and the `Leg` constructor
+do the same. `Progress`, in the cargo package, reads the handling
+history through `History`'s rules; the sample's
+`deriveDeliveryProgress` takes a `HandlingHistory` built from the
+other aggregate. The cargo and handling packages therefore reference
+each other, and so do the sample's. Nothing was reaching across in a
+way the sample forbids; the packages prove it where the audit could
+only assert it.
+
+Two things the move does not do, stated so the README does not
+overclaim. It does not enforce one aggregate written per transaction.
+Every command writes one — booking lands the cargo and its
+specification, routing its legs, handling one event — but the
+compiler would allow a command that called two writers, and the
+sample has no guard either. And it does not touch the read side's
+presumption of one store. The delivery is still eight solves joining
+handling events, legs and the specification against one source. The
+engine would mechanically join two sources, since every literal names
+its own, but the commit certifies one transaction's footprint on one
+store, so the join would carry no proof. That is the cross-store
+transaction problem in the engine's clothes, and the sample's answer
+to it is the delivery snapshot the port removed as redundant: a
+materialised cross-aggregate join, stored on the cargo side, written
+by a second transaction after the handling lands. Read-time derivation
+is free while the aggregates share a store. Split the store and the
+snapshot comes back, as a derived relation like any other.
+
+One engine observation. `Literal.fact()` checks that every column is
+bound and nothing else; it does not know whether the literal was built
+over a source or over a rule. Asserting a rule-built literal is
+therefore not refused — it stages a row in a relation no reading ever
+consults, silently. The visibility here rests on the builders being
+package-private, which the compiler enforces and is enough. An engine
+that refused `fact()` on a rule literal would make the same guarantee
+without the discipline; noted, not done.
+
+---
+## 14. The leg is said four times: the row, its literal, the tuple, the value
+
+Tom's count was three — the leg is essential state in a relation, a
+`Literal` naming it, and a separate Java value for the facade — and
+it is four. `Routing.candidate` answers an `LList` of five-tuples,
+because the solver can carry a tuple and not a `Leg`, so the route
+finder builds legs in a fourth shape. Four places know that a leg is
+a voyage, two ports and two times in that order, and at every seam
+there is mapping code: `LegColumns` reads rows into values,
+`legsDiffering` writes values back as literals with the index from
+their position, and `routeCandidatesOf` unpacks the tuples. The
+sample has one shape, because the ORM makes the object the row.
+
+This is the cost of "names stated once", and it is the first friction
+in the ledger that is about the boundary rather than the rules. The
+names are stated once in the relation and again in the value class,
+and a column added to the leg is added in four files. `HandlingEvent`
+and `RouteSpecification` are the same species with one seam fewer,
+since nothing solves for them as a structure; `Delivery` is not in the
+list at all, because it is never written, so it has the value and the
+rules and nothing between. The leg is the worst case because it is
+both a row and a solver's answer.
+
+Not done: collapsing the value into the tuple would save one seam and
+make every test and the oracle read `_3.get()` for a port; dropping
+the value for the row would put the relation's column names into the
+tests. The engine's codec facility maps a Java value to one column;
+nothing maps a value to a row, and nothing lets a rule carry a `Leg`
+as one term — the gap P4 named from the solver's side, met again at
+the relation's. A relation whose row is a value type, columns derived
+from the fields, would make the four shapes two. Engine work, if it is
+done at all; the port keeps its four and names them here.
+
+---
+## 15. The delivery stored, the sample's way: the cargo's own commands derive it, the handling is shown to it
+
+Entry 13 ended with the delivery as eight solves joining the handling
+events, the legs and the specification, and called the sample's stored
+`Delivery` a materialised cross-aggregate join the port had removed as
+redundant. Tom's reading of the sample is different and is the one the
+port now follows: the delivery is the cargo's state, with a preferred
+representation that its update methods compute. `specifyNewRoute` and
+`assignToRoute` recompute it from what they hold; the handling that
+reaches it through `CargoInspectionService` is the third update, with
+the input arriving from outside the aggregate and later. Nothing
+invalidates it, because every writer maintains it. "Derived" was never
+a property of the data, only of which store the system treats as the
+source, and the sample treats the cargo as the source and the handling
+log as what was reported. The sample also keeps the cargo from reading
+that log: `Cargo` never sees a `HandlingEventRepository`; the
+application service loads the history and hands it in. The port now
+keeps both rules, because the point of the port is to show how the
+sample's shape is expressed here, not to improve on it (d9a136c).
+
+What the cargo package stores, beside the booking, the specification
+and the legs: `lastHandling`, one row per cargo, the sample's
+`Delivery.lastEvent`, the handling the cargo was last shown; and
+`delivery`, one row per cargo, every field of the sample's embedded
+`Delivery` except `calculatedAt`, which would need a clock the domain
+does not have. The eight rules read `lastHandling` where they read
+`History.lastEvent`, and the class holding all of it is `Delivery`,
+which is the sample's name for exactly this: the last event, the
+calculated fields and the methods that calculate them. `Progress`,
+named after `deriveDeliveryProgress` since entry 7, and a `Transport`
+that held the eight rules for a day, are gone, since neither is a word
+the sample has and the README promises its vocabulary name for name;
+Tom caught both. The value the tracking reads off the row is
+`DeliveryDTO`, the suffix the sample's own interfaces layer uses, so
+the sample's name goes to the rules and the value says what it is.
+The cargo package no longer imports
+the handling package, and the one crossing left is the
+sample's own, the registration's "unknown cargo" denial reading
+`Cargo.known`. The row itself is a rule, `Delivery.calculated`: the
+eight rules conjoined, each partial one reified to its `LOption`
+column, `rule(c, x) ∧ col = some(x) ∨ ¬rule(c, _) ∧ col = none`, each
+predicate to its boolean the same way. Every cargo command ends the
+same way: the stored row leaves, and the row `calculated` answers over
+the transaction value with the command's own facts staged lands, both
+through `Question.select` with the stored relation as the template,
+which is the door the engine built for exactly this. No `DeliveryDTO`
+exists on the write path; the value is read off the stored row
+at the tracking edge, as every other value is. The handling reaches the cargo by
+`Shipping.inspectCargo`: the facade reads the handling side's latest
+event and hands it to `cargo.inspect`, which replaces `lastHandling`
+and re-derives, in a transaction of its own. The scenario and the
+oracle now commit twice per handling, the registration and the
+inspection, as the sample's message hop makes them; `InspectionTest`
+has the window between as a test, a registered handling absent from
+the delivery until the cargo is inspected.
+
+Entry 6 revisited. `calculated` is the rule entry 6 built and reverted,
+with `LOption` where the nulls were, and the objection there stands:
+its head says absence as a value, so nothing should compose over it,
+and nothing does. It is a leaf whose one consumer is the write door,
+and the eight rules beneath it stay partial for each other. What moved
+is where the reification happens: entry 6 put it at the read edge in
+Java, eight solves in `deliveryOf`; now it is one rule at the write
+edge, and the read edge reads a stored fact. One flattening to name: the next activity's voyage is one
+`LOption<String>` column that is none both when there is no next
+activity and when the next one is port-side; the kind column decides
+which, so nothing is lost, and the row is eleven columns wide.
+
+The mechanics that were not obvious. Every rule holder is bound to one
+transaction value, and staging mints a new one, so a command that
+stages legs and then solves the delivery over them must solve over
+the staged value. `Cargo` builds its own `Itinerary`, `Routing` and
+`Delivery` from the transaction it is given, and the re-derivation
+builds a second `Cargo` over the staged transaction, which costs
+nothing since the holders are stateless. `Shipping` constructs the
+cargo from the transaction alone and the history from the cargo; the
+facade's reads that were the cargo's moved behind it. And there is no
+comparison before the write: with the buffer change below, retracting
+the stored row and landing an identical one cancels to nothing, so an
+unchanged delivery flushes nothing by construction. The first cut of
+this entry had the derivation in Java, eight `Query` calls folding the
+value and a function unfolding it into a literal, with a value
+comparison deciding the write; Tom named it for what it was, an ORM's
+dirty check written by hand, and it went the same day.
+
+What it forced in the engine: entry 4's open question, closed. With
+the delivery replaced by every command, two cargo commands in one
+transaction, booking then routing, a handling then its inspection,
+retracted a row the same transaction had staged, and `WriteBuffer`
+refused thirty-one tests at once. The delta is now a signed set:
+retracting a fact this transaction staged, or asserting one it staged
+to remove, cancels it, and only what remains against the base is
+flushed (pldb 3d4c079). Replacing a value within the transaction that
+staged it is a single-transaction operation, which is what entry 4
+asked for; booking and re-specifying in one request works, and the
+receipt in `BookingTest` says so instead of the refusal. The port
+builds against the pldb snapshot until that lands in a release.
+
+What it changed in the receipts above. P2: the inspection writes now,
+and the notices are read off the stored flags, as `inspectCargo`
+reads `cargo.delivery().isMisdirected()`. P5: the blind route is no
+longer blind. `assignToRoute` derives the delivery, the derivation
+reads the specification, and a route assigned on a specification
+another party replaced is refused on both tiers, by the pin on the
+simulated one and by SSI on PostgreSQL, since both parties now write
+the delivery row and the schedule is a read-write cycle. Re-solved on
+the world as it is, the same route lands as misrouted. The sentence
+in P5 that said the blind pair lands because "nothing stored can go
+stale" and that the sample would refuse it "to protect a stored
+`Delivery` the port never has" now describes the port's own case: the
+stale snapshot the sample's version column exists to prevent, and
+which the sample without that column would save, is the one the
+footprint refuses. The two tiers also stopped disagreeing on this
+schedule. Entry 13: `Delivery` does not read `History`; the delivery
+is not eight solves across aggregates at read time; the cross-store
+paragraph's "split the store and the snapshot comes back" has come
+back without the split. Entry 14: `Delivery` is now in the list, with
+three shapes, the row, its literal and the value, and mapping code at
+one seam, the row read into the value at the tracking edge; the write
+side has none, since a rule answers the row.
+
+What this costs, stated so the README does not sell it. In one process
+over one store nothing forces the window between registration and
+inspection; it exists because the sample's does, and every test that
+lands a handling and reads the delivery pays one `inspectCargo` for
+it. The row is wide, and every command solves eight rules it did not
+need to before. And the engine's contribution to a stored derivation
+is exactly what the discussion before this entry concluded: the
+derivation and its certification, not its invalidation. The commands
+know what to recompute because they are the cargo's commands, which is
+the sample's answer too.
+
+## 16. The rules are one bag, static over a source; the root is the door Java calls
+
+Tom's reading of the files after entry 15: the Java-to-Clauseway methods
+were dominating the classes, and the rules had read better when they were
+soup. The diagnosis under it is the impedance in the flesh, stated from the
+engine's side rather than the object's. Clauseway composes well, across an
+aggregate boundary as readily as inside one, which is where it should not;
+and it does not compose with Java at all. If the whole application were
+rules there would be nothing to arrange. It is not, so Java needs sanctioned
+doors, and DDD says which: the aggregate root. Its methods are the Java
+face; its essential state is package-private; other aggregates may read it
+freely, as derived state or as rules one-to-one over the relations if a
+reader outside the package ever needs one, but every write goes through a
+method of the root, the delivery included, since it is essential state
+computed from events that arrive from outside.
+
+What changed (3686b12, 479a8f1, 42fbd6e). Every rule is static and takes
+the answer source as its first argument, the way the relation builders
+always did. Nothing is constructed to read a rule: a body imports the rules
+it composes and threads `db` through, and `Voyages.aboard(db, ...)` sits
+beside `leg(db, ...)` in the same body without a `Voyages` in hand. The
+re-derivation in `Delivery.refresh` solves `derived(staged, row)` instead of
+building a second `Cargo` over the staged transaction, which is what it
+always meant. The cargo has many rules, so they are one class,
+`CargoRules`, with the itinerary, the routing and the delivery as sections
+rather than classes; `History`, `Voyages` and `Locations` have three or
+five rules each and keep them on the root. `Cargo` is what Java needs and
+nothing else: the five relations, the parts read as values, the row doors,
+and the commands. The rule holders had no design behind them. They were
+written bound to a transaction in the first phase, when the rules were
+being read as the sample's objects, and every later entry kept the shape
+without re-examining it. The engine's own style was source-first all along.
+
+The wall is unchanged: the builders are package-private, the bag reads
+them because it shares the package, and what crosses between packages is
+still rules only. Two shapes were weighed and not taken. A package-private
+rules class would have needed either a public rule one-to-one over every
+relation it reads from outside, which the review before this entry had
+struck out as pointless, or a tracking that reads values only, which
+moves the row-to-value code into the roots and gives every rule a Java
+twin. One bag across all four aggregates would have needed the same read
+face, since no class outside the cargo package can build its literals.
+
+What it amends above. Entry 13's list of what crosses between packages
+reads `CargoRules.known` for `Cargo.known`, and `specification` and
+`itinerary` are gone since the review. Entry 15's paragraph on the
+mechanics, every rule holder bound to one transaction value and the
+second `Cargo` over the staged one, describes a shape that no longer
+exists; the staged solve is the one line it was always about.
+
+What it costs. The source is one more argument at every rule call, and
+`CargoRules` is five hundred lines. `Itinerary`, `Routing` and `Delivery`
+are section headings now, not types, so the README's name-for-name promise
+holds at the level of the rules and the relations, which is where the
+sample's names were doing their work. What the engine would need: nothing
+for this; but the write door does not refuse a literal a rule built, so the
+bag could assert a rule-shaped fact into a relation named after the rule.
+That lands nowhere a root owns, so the wall holds, but the engine's half
+of it is a convention and not a type.
+
+The row rule, named and re-headed, and the view as one unit. Tom's second
+reading: the row rule wanted its whole body on the holder, and
+`calculated` said the mode and not the thing; his third, that the
+derivation, the row and the recomputation were one thing kept in three
+classes. What it is: a derived relation with exactly the stored
+relation's shape, the base face a fact lookup, the derived face a body
+over the same eleven columns, and `delivered` the refresh for one key,
+which is a materialized view at row grain. The sample keeps the pair
+under one name, `Delivery` stored and `Delivery.derivedFrom` computed;
+the port had split the name and lost half. pldb's own design sketch,
+`docs/design/relational-structs.md`, draws the shape it wanted: a
+derived relation is a struct with a `rule(Row r)` body, and the Row is
+the head. The eleven positional parameters were that head restated by
+hand, and the holder's wrapper existed only to pass ten variables
+through. So the unit is `Delivery` again, under the sample's name for exactly
+this, and it holds the view and nothing else: the key and the ten
+columns as variables, one method applying them to a relation builder,
+both faces built from it, `Delivery.stored(db, row)` reading the builder
+from a source and `Delivery.derived(db, row)` solving the body over the
+row's variables, the refresh every command ends with, and the value
+read. The eight calculations stay rules in `CargoRules`; `Cargo` is
+four relations, the values and the commands. A fresh row is what a question and its
+template share and what the value is read off; a probe is every column
+projected, with the one a rule cares about named through Lombok's
+`@With`, which is the note's per-column builder for free, since Lombok
+is the code generation already in the build. `notice` reads
+`stored(db, probe(id).withMisdirected(lval(true)))` where it spelled
+ten slots. The ten names are now said three times, the fields, the
+builder application and the value mapping, down from five; the
+processor the note sketches would generate the first two from the
+third's types and leave the mapping, which is the domain's one decision,
+the flattening of three columns into `HandlingActivity`. What the engine
+would need: the two faces must keep different relation names, since
+identity is by name and a rule literal sharing a fact literal's name
+would meet it in the table; and the refresh, select then retract then
+assert for one key, is the half of a materialized view the engine does
+not name yet.
+
+## 17. A row type is a mapper: variables in, the value out, and the engine never rebuilds it
+
+Entry 16 ended with the ten names said three times, the fields, the
+builder application and the value mapping, and `Delivery` as the row's
+shape as variables with both faces built from it. Three designs for what
+that class IS followed in two days, two of them green and wrong, and the
+third is what stands (logic 956eabb, pldb 0e7f680, port e4b1bf2, f7302d2).
+
+The first made the row a term. logic's `Structural<R>` is the contract
+the engine's own structures share, members out and rebuild from members,
+and a user type may sign it; `Delivery` did, with `Unifiable` fields, and
+a read was the engine reifying the whole row and rebuilding it. It was
+unsound in a way the tests never reached: the reifier rebuilds with an
+`Any` in every open cell, a `Unifiable<T>` field cannot hold one, and a
+rule that left a column open would have failed with a cast error, not a
+refusal. The second made the fields `Term`, which holds an `Any`
+honestly, and gave `Term` a door, `unifiable()`, that a rule body goes
+through to unify a field. Sound, and twenty lines of casts across the six
+row types; `Delivery.derived` opened with eleven of them.
+
+Tom's reading that ended it. The engine is honest about its two
+directions: a goal takes `Unifiable`, an answer comes back `Reified`,
+and they never mix. Java has no such distinction, and every attempt to
+give a field one type that serves both ends lied in one direction. The
+row type is not a term; it is the Java interop layer, and the merged
+type Java needs already exists in the engine: the variable, which enters
+the goal as itself and reads the answer as the key of a `Solution`. So a
+row type is a mapper, the variables it is built from and the mapping of
+one solution over them into the value, and that is important enough to
+be the engine's: `Mapper<D>` landed in logic's `Query` API, `select(row)`
+streams the values, and pldb's `Schema<D>` is a Mapper that also names
+its columns for the literal head.
+
+What it looks like here. `Delivery implements Schema<DeliveryDto>`: the
+eleven fields are `Unifiable` again and the rule body unifies them
+directly, as it did before the detour; `map(Solution)` reads each cell by
+its field, and the flattening of three columns into a `HandlingActivityDto`
+is three lines of it, which no rebuild could have expressed. A read is
+`Query.of(delivery.stored(db)).select(delivery).stream()`, and the
+`toDto` calls at every read site are gone with the method. A wide cell is
+refused at the solution before the mapper sees it, with the field named,
+and a `projected()` member selected by mistake is refused the same way,
+as the open cell it is. The probes are constructor calls with
+`projected()` per column, since nothing rebuilds a row any more. The
+ten names are said three times still, the fields, the columns and the
+mapping, but the second is a list of names and the third is the domain's
+one decision; the generator entry 16 sketched would emit the first two.
+
+One wrinkle, solved with a tuple. `LegDto` and `HandlingActivityDto`
+drop their ordinal on purpose, the itinerary's index and the plan's step,
+because the sample's values do not carry them; but `itineraryOf` and
+`planOf` sort by them. The two row types map to `Tuple2<Integer, Dto>`,
+and the two reads sort by `_1` and take `_2`. A named value would read
+better; the tuple is Clauseway's own and the seam is two lines.
+
+What it amends above. Entry 14's four shapes of a leg are three: the
+row, its literal and the value, with the mapping between the first and
+the last a method on the first, and `CandidateLeg` is the one that stays
+a term, because the route finder carries it inside a list; it signs
+`Structural` with `Term` members and is the only user of the `unifiable()`
+door. Entry 15's "both through `Question.select` with the stored relation
+as the template" is now `replacing(stored, derived)` on the transaction,
+the door the engine grew for it, and the typed `Question.select` is gone.
+Entry 16's three sayings of the names stand, with the middle one a list.
+
+What it cost the engine, and what it did not. `Mapper` is one interface
+and one `select` overload; `Selection` became generic in what it streams
+and `solutions()` became `stream()`; `Solution.decided()` is the gate.
+`Structural` is untouched, and `Term.unifiable()` stays for the term
+tier. The engine's `select` deduplicates by default where `solve` did
+not; every read here wants distinct rows, so nothing changed, and the
+`all()` reading is one call away if one ever does not.
