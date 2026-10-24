@@ -21,15 +21,15 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.shipping.cargo.Cargo;
 import org.clauseway.shipping.cargo.CargoRules;
-import org.clauseway.shipping.cargo.DeliveryDTO;
-import org.clauseway.shipping.cargo.HandlingActivityDTO;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.DeliveryDto;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
+import org.clauseway.shipping.cargo.dto.LegDto;
 import org.clauseway.shipping.cargo.Notice;
 import org.clauseway.shipping.cargo.CandidateLeg;
-import org.clauseway.shipping.cargo.RouteSpecificationDTO;
+import org.clauseway.shipping.cargo.dto.RouteSpecificationDto;
 import org.clauseway.shipping.cargo.RoutingStatus;
 import org.clauseway.shipping.handling.HandlingEvent;
-import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingEventDto;
 import org.clauseway.shipping.handling.History;
 
 public final class Tracking {
@@ -45,15 +45,15 @@ public final class Tracking {
 	// -- history: the handling events ---------------------------------------
 
 	/** The cargo's handling events, distinct, in completion order. */
-	public List<HandlingEventDTO> handlingHistoryOf(String trackingId) {
+	public List<HandlingEventDto> handlingHistoryOf(String trackingId) {
 		return History.event(db, HandlingEvent.fresh(lval(trackingId))).select()
 				.map(HandlingEvent::toDto)
-				.sorted(Comparator.comparing(HandlingEventDTO::getCompletionTime))
+				.sorted(Comparator.comparing(HandlingEventDto::getCompletionTime))
 				.collect(Collectors.toList());
 	}
 
 	/** The most recently completed handling of the cargo, if any. */
-	public Optional<HandlingEventDTO> lastEventOf(String trackingId) {
+	public Optional<HandlingEventDto> lastEventOf(String trackingId) {
 		return History.lastEvent(db, HandlingEvent.fresh(lval(trackingId))).select()
 				.map(HandlingEvent::toDto)
 				.findFirst();
@@ -62,32 +62,32 @@ public final class Tracking {
 	// -- itinerary: the legs and what they plan --------------------------------
 
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
-	public List<LegDTO> itineraryOf(String trackingId) {
+	public List<LegDto> itineraryOf(String trackingId) {
 		return cargo.itineraryOf(trackingId);
 	}
 
-	public Optional<LegDTO> firstLegOf(String trackingId) {
+	public Optional<LegDto> firstLegOf(String trackingId) {
 		return cargo.firstLegOf(trackingId);
 	}
 
-	public Optional<LegDTO> lastLegOf(String trackingId) {
+	public Optional<LegDto> lastLegOf(String trackingId) {
 		return cargo.lastLegOf(trackingId);
 	}
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
-	public List<HandlingActivityDTO> planOf(String trackingId) {
+	public List<HandlingActivityDto> planOf(String trackingId) {
 		return cargo.planOf(trackingId);
 	}
 
 	/** Whether the cargo's itinerary accounts for the handling. */
-	public boolean isExpected(String trackingId, HandlingEventDTO event) {
+	public boolean isExpected(String trackingId, HandlingEventDto event) {
 		return holds(CargoRules.expected(db, lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber())));
 	}
 
 	// -- routing: the specification and the routes that satisfy it ------------
 
-	public Optional<RouteSpecificationDTO> routeSpecificationOf(String trackingId) {
+	public Optional<RouteSpecificationDto> routeSpecificationOf(String trackingId) {
 		return cargo.routeSpecificationOf(trackingId);
 	}
 
@@ -98,7 +98,7 @@ public final class Tracking {
 	}
 
 	/** The itineraries the schedule offers the cargo's specification. */
-	public List<List<LegDTO>> routeCandidatesOf(String trackingId) {
+	public List<List<LegDto>> routeCandidatesOf(String trackingId) {
 		Unifiable<LList<CandidateLeg>> legs = lvar();
 		return Query.of(CargoRules.candidate(db, lval(trackingId), legs)).solve(legs)
 				.map(route -> route.get().elements()
@@ -111,7 +111,7 @@ public final class Tracking {
 	// -- delivery: the stored row and the inspection ---------------------------
 
 	/** The cargo's delivery, as its commands last stored it. */
-	public DeliveryDTO deliveryOf(String trackingId) {
+	public DeliveryDto deliveryOf(String trackingId) {
 		return cargo.deliveryOf(trackingId);
 	}
 

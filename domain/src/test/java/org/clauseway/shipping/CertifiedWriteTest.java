@@ -16,8 +16,8 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.vavr.control.Try;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.LegDTO;
-import org.clauseway.shipping.cargo.RouteSpecificationDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
+import org.clauseway.shipping.cargo.dto.RouteSpecificationDto;
 
 public class CertifiedWriteTest {
 
@@ -51,7 +51,7 @@ public class CertifiedWriteTest {
 	public void aRouteChosenForASpecificationTheWorldHasLeftIsRefused() {
 		SharedDatabase store = bookedStore();
 		Shipping routing = open(store, "route");
-		List<LegDTO> chosen = routing.tracking().routeCandidatesOf("XYZ").get(0);
+		List<LegDto> chosen = routing.tracking().routeCandidatesOf("XYZ").get(0);
 		Shipping routed = routing.assignToRoute("XYZ", chosen).get();
 
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
@@ -73,8 +73,8 @@ public class CertifiedWriteTest {
 	public void aRouteAssignedOnAReplacedSpecificationIsRefusedThenLandsAsMisrouted() {
 		SharedDatabase store = bookedStore();
 		Shipping routed = open(store, "route").assignToRoute("XYZ", Arrays.asList(
-				new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
-				new LegDTO("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get();
+				new LegDto("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
+				new LegDto("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get();
 
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
@@ -84,8 +84,8 @@ public class CertifiedWriteTest {
 		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
 
 		assertThat(open(store, "route-again").assignToRoute("XYZ", Arrays.asList(
-				new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
-				new LegDTO("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
+				new LegDto("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)),
+				new LegDto("0123", HAMBURG, MELBOURNE, hour(3), hour(4)))).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(MISROUTED);
 	}
 
@@ -101,7 +101,7 @@ public class CertifiedWriteTest {
 		assertThat(refused.isFailure()).isTrue();
 		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
 		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
-				.contains(new RouteSpecificationDTO(STOCKHOLM, HAMBURG, hour(50)));
+				.contains(new RouteSpecificationDto(STOCKHOLM, HAMBURG, hour(50)));
 	}
 
 	/** Two parties book one tracking id: each read its absence; the second commit is refused. */
@@ -117,7 +117,7 @@ public class CertifiedWriteTest {
 		assertThat(refused.isFailure()).isTrue();
 		assertThat(refused.getCause()).isInstanceOf(Transaction.Conflict.class);
 		assertThat(open(store, "check").tracking().routeSpecificationOf("XYZ"))
-				.contains(new RouteSpecificationDTO(STOCKHOLM, MELBOURNE, hour(100)));
+				.contains(new RouteSpecificationDto(STOCKHOLM, MELBOURNE, hour(100)));
 	}
 
 	/** The same route, chosen after the world settled, lands as routed. */
@@ -125,14 +125,14 @@ public class CertifiedWriteTest {
 	public void theRefusedPartyReSolvesAndLands() {
 		SharedDatabase store = bookedStore();
 		Shipping stale = open(store, "route");
-		List<LegDTO> chosen = stale.tracking().routeCandidatesOf("XYZ").get(0);
+		List<LegDto> chosen = stale.tracking().routeCandidatesOf("XYZ").get(0);
 		assertThat(open(store, "reroute").specifyNewRoute("XYZ", STOCKHOLM, HAMBURG, hour(50)).get()
 				.commit().isSuccess()).isTrue();
 		assertThat(stale.assignToRoute("XYZ", chosen).get().commit().isFailure()).isTrue();
 
 		Shipping fresh = open(store, "again");
-		List<LegDTO> rechosen = fresh.tracking().routeCandidatesOf("XYZ").get(0);
-		assertThat(rechosen).containsExactly(new LegDTO("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
+		List<LegDto> rechosen = fresh.tracking().routeCandidatesOf("XYZ").get(0);
+		assertThat(rechosen).containsExactly(new LegDto("0123", STOCKHOLM, HAMBURG, hour(1), hour(2)));
 		assertThat(fresh.assignToRoute("XYZ", rechosen).get().commit().isSuccess()).isTrue();
 		assertThat(open(store, "check").tracking().routingStatusOf("XYZ")).isEqualTo(ROUTED);
 	}

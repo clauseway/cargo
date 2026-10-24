@@ -14,7 +14,7 @@ import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.handling.History;
 import org.junit.Test;
-import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.handling.HandlingEventDto;
 
 public class RegistrationTest {
 
@@ -43,14 +43,14 @@ public class RegistrationTest {
 	public void createHandlingEventWithCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", LOAD, STOCKHOLM, "CM001", hour(1), hour(2)).get();
 		assertThat(s.tracking().handlingHistoryOf("ABC"))
-				.containsExactly(new HandlingEventDTO(LOAD, STOCKHOLM, Optional.of("CM001"), hour(1)));
+				.containsExactly(new HandlingEventDto(LOAD, STOCKHOLM, Optional.of("CM001"), hour(1)));
 	}
 
 	@Test
 	public void createHandlingEventWithoutCarrierMovement() {
 		Shipping s = world().registerHandling("ABC", CLAIM, STOCKHOLM, hour(1), hour(2)).get();
 		assertThat(s.tracking().handlingHistoryOf("ABC"))
-				.containsExactly(new HandlingEventDTO(CLAIM, STOCKHOLM, Optional.empty(), hour(1)));
+				.containsExactly(new HandlingEventDto(CLAIM, STOCKHOLM, Optional.empty(), hour(1)));
 	}
 
 	@Test

@@ -1,4 +1,4 @@
-package org.clauseway.shipping.cargo;
+package org.clauseway.shipping.cargo.dto;
 
 // ABOUTME: One leg of an itinerary: a voyage boarded at a location and time
 // ABOUTME: and left at another — a value, compared whole.
@@ -7,7 +7,7 @@ import java.time.Instant;
 import lombok.Value;
 
 @Value
-public class LegDTO {
+public class LegDto {
 	String voyageNumber;
 	String loadLocation;
 	String unloadLocation;

@@ -14,10 +14,10 @@ import static org.clauseway.shipping.Hours.hour;
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.HandlingActivityDTO;
-import org.clauseway.shipping.handling.HandlingEventDTO;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
+import org.clauseway.shipping.handling.HandlingEventDto;
 import org.clauseway.shipping.handling.HandlingType;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class ItineraryTest {
 
@@ -44,16 +44,16 @@ public class ItineraryTest {
 
 	private static Shipping routed() {
 		return booked().assignToRoute("CARGO1", Arrays.asList(
-				new LegDTO(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-				new LegDTO(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
+				new LegDto(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
+				new LegDto(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
-	private static HandlingEventDTO event(HandlingType type, String location) {
-		return new HandlingEventDTO(type, location, Optional.empty(), hour(5));
+	private static HandlingEventDto event(HandlingType type, String location) {
+		return new HandlingEventDto(type, location, Optional.empty(), hour(5));
 	}
 
-	private static HandlingEventDTO event(HandlingType type, String location, String voyage) {
-		return new HandlingEventDTO(type, location, Optional.of(voyage), hour(5));
+	private static HandlingEventDto event(HandlingType type, String location, String voyage) {
+		return new HandlingEventDto(type, location, Optional.of(voyage), hour(5));
 	}
 
 	@Test
@@ -102,20 +102,20 @@ public class ItineraryTest {
 	@Test
 	public void thePlannedHandlings() {
 		assertThat(routed().tracking().planOf("CARGO1")).containsExactly(
-				new HandlingActivityDTO(RECEIVE, SHANGHAI, Optional.empty()),
-				new HandlingActivityDTO(LOAD, SHANGHAI, Optional.of(VOYAGE)),
-				new HandlingActivityDTO(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)),
-				new HandlingActivityDTO(LOAD, ROTTERDAM, Optional.of(VOYAGE)),
-				new HandlingActivityDTO(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)),
-				new HandlingActivityDTO(CLAIM, GOTHENBURG, Optional.empty()));
+				new HandlingActivityDto(RECEIVE, SHANGHAI, Optional.empty()),
+				new HandlingActivityDto(LOAD, SHANGHAI, Optional.of(VOYAGE)),
+				new HandlingActivityDto(UNLOAD, ROTTERDAM, Optional.of(VOYAGE)),
+				new HandlingActivityDto(LOAD, ROTTERDAM, Optional.of(VOYAGE)),
+				new HandlingActivityDto(UNLOAD, GOTHENBURG, Optional.of(VOYAGE)),
+				new HandlingActivityDto(CLAIM, GOTHENBURG, Optional.empty()));
 		assertThat(booked().tracking().planOf("CARGO1")).isEmpty();
 	}
 
 	@Test
 	public void theFirstAndLastLegs() {
 		Shipping s = routed();
-		assertThat(s.tracking().firstLegOf("CARGO1")).contains(new LegDTO(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)));
-		assertThat(s.tracking().lastLegOf("CARGO1")).contains(new LegDTO(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)));
+		assertThat(s.tracking().firstLegOf("CARGO1")).contains(new LegDto(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)));
+		assertThat(s.tracking().lastLegOf("CARGO1")).contains(new LegDto(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)));
 		assertThat(booked().tracking().firstLegOf("CARGO1")).isEmpty();
 		assertThat(booked().tracking().lastLegOf("CARGO1")).isEmpty();
 	}

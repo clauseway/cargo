@@ -5,6 +5,7 @@ package org.clauseway.shipping.oracle;
 
 import java.time.Instant;
 import java.util.Optional;
+import org.clauseway.shipping.cargo.dto.DeliveryDto;
 import se.citerus.dddsample.domain.model.location.Location;
 import se.citerus.dddsample.domain.model.voyage.Voyage;
 
@@ -32,7 +33,7 @@ record Snapshot(String routingStatus, String transportStatus, Optional<String> l
 				d.isUnloadedAtDestination());
 	}
 
-	static Snapshot of(org.clauseway.shipping.cargo.DeliveryDTO d) {
+	static Snapshot of(DeliveryDto d) {
 		return new Snapshot(
 				d.getRoutingStatus().name(),
 				d.getTransportStatus().name(),

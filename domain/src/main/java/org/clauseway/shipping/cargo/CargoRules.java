@@ -13,8 +13,6 @@ import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
-import static org.clauseway.shipping.cargo.Cargo.cargo;
-import static org.clauseway.shipping.cargo.Cargo.lastHandling;
 
 import java.time.Instant;
 import lombok.AccessLevel;
@@ -37,6 +35,27 @@ import org.clauseway.shipping.voyage.Voyages;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CargoRules {
+	// -- the essential state: the cargo and its last handling here, the specification and the legs as rows, the delivery its own ---------
+
+	/** A booked cargo, by tracking id; the origin never changes after booking. */
+	static Literal cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
+		return Literal.relation(Cargo.class, "cargo")
+				.arg("trackingId", trackingId).indexed()
+				.arg("origin", origin)
+				.from(db);
+	}
+
+	/** The handling the cargo was last shown — Delivery.lastEvent; replaced when an inspection brings a later one. */
+	static Literal lastHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
+			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
+		return Literal.relation(Cargo.class, "lastHandling")
+				.arg("trackingId", trackingId).indexed()
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completed", completed)
+				.from(db);
+	}
 
 	// -- the cargo -----------------------------------------------------------
 

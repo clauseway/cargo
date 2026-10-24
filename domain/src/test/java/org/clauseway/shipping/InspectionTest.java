@@ -13,7 +13,7 @@ import static org.clauseway.shipping.cargo.Notice.MISDIRECTED;
 
 import java.util.Arrays;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class InspectionTest {
 
@@ -33,8 +33,8 @@ public class InspectionTest {
 				.withCarrierMovement(WRONG_VOYAGE, SHANGHAI, HELSINKI, hour(1), hour(2))
 				.bookCargo("CARGO1", SHANGHAI, GOTHENBURG, hour(10)).get()
 				.assignToRoute("CARGO1", Arrays.asList(
-						new LegDTO(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
-						new LegDTO(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
+						new LegDto(VOYAGE, SHANGHAI, ROTTERDAM, hour(1), hour(2)),
+						new LegDto(VOYAGE, ROTTERDAM, GOTHENBURG, hour(3), hour(4)))).get();
 	}
 
 	/** The handling is registered on its own side; the cargo learns of it when inspected, as CargoInspectionService does. */

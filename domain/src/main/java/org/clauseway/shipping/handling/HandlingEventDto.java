@@ -8,7 +8,7 @@ import java.util.Optional;
 import lombok.Value;
 
 @Value
-public class HandlingEventDTO {
+public class HandlingEventDto {
 	HandlingType type;
 	String location;
 	Optional<String> voyageNumber;

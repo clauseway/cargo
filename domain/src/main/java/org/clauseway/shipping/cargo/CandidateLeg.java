@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import org.clauseway.logic.unification.structures.Structural;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 public final class CandidateLeg implements Structural<CandidateLeg> {
@@ -35,7 +36,7 @@ public final class CandidateLeg implements Structural<CandidateLeg> {
 	}
 
 	/** A ground leg as the value. */
-	public LegDTO toDto() {
-		return new LegDTO(value(voyageNumber), value(loadLocation), value(unloadLocation), value(loadTime), value(unloadTime));
+	public LegDto toDto() {
+		return new LegDto(value(voyageNumber), value(loadLocation), value(unloadLocation), value(loadTime), value(unloadTime));
 	}
 }

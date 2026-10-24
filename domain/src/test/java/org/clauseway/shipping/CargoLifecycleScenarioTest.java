@@ -23,10 +23,10 @@ import java.util.function.Function;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.DeliveryDTO;
-import org.clauseway.shipping.cargo.HandlingActivityDTO;
+import org.clauseway.shipping.cargo.dto.DeliveryDto;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
 import org.clauseway.shipping.handling.HandlingType;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class CargoLifecycleScenarioTest {
 
@@ -63,7 +63,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(useCase.apply(open()).commit().isSuccess()).isTrue();
 	}
 
-	private DeliveryDTO delivery() {
+	private DeliveryDto delivery() {
 		return open().tracking().deliveryOf(TRACKING_ID);
 	}
 
@@ -132,15 +132,15 @@ public class CargoLifecycleScenarioTest {
 		/* The scenario's routing stub offers one route from Hongkong; the cargo is
 		   assigned to it, third leg as given. */
 		commit(s -> s.assignToRoute(TRACKING_ID, Arrays.asList(
-				new LegDTO(V100, HONGKONG, NEWYORK, day("2009-03-03"), day("2009-03-09")),
-				new LegDTO(V200, NEWYORK, CHICAGO, day("2009-03-10"), day("2009-03-14")),
-				new LegDTO(V200, CHICAGO, STOCKHOLM, day("2009-03-07"), day("2009-03-11")))).get());
+				new LegDto(V100, HONGKONG, NEWYORK, day("2009-03-03"), day("2009-03-09")),
+				new LegDto(V200, NEWYORK, CHICAGO, day("2009-03-10"), day("2009-03-14")),
+				new LegDto(V200, CHICAGO, STOCKHOLM, day("2009-03-07"), day("2009-03-11")))).get());
 
 		assertThat(delivery().getTransportStatus()).isEqualTo(NOT_RECEIVED);
 		assertThat(delivery().getRoutingStatus()).isEqualTo(ROUTED);
 		assertThat(delivery().getEta()).isPresent();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(RECEIVE, HONGKONG, Optional.empty()));
+				.contains(new HandlingActivityDto(RECEIVE, HONGKONG, Optional.empty()));
 
 		/* Use case 3: handling
 		   Handling begins: cargo is received in Hongkong. */
@@ -157,7 +157,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getTransportStatus()).isEqualTo(ONBOARD_CARRIER);
 		assertThat(delivery().isMisdirected()).isFalse();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(UNLOAD, NEWYORK, Optional.of(V100)));
+				.contains(new HandlingActivityDto(UNLOAD, NEWYORK, Optional.of(V100)));
 
 		/* An attempt to register a handling event that is not valid because
 		   there is no voyage with the specified voyage number, and there is no
@@ -184,8 +184,8 @@ public class CargoLifecycleScenarioTest {
 
 		// Assign the stub's route from Tokyo
 		commit(s -> s.assignToRoute(TRACKING_ID, Arrays.asList(
-				new LegDTO(V300, TOKYO, HAMBURG, day("2009-03-08"), day("2009-03-12")),
-				new LegDTO(V400, HAMBURG, STOCKHOLM, day("2009-03-14"), day("2009-03-15")))).get());
+				new LegDto(V300, TOKYO, HAMBURG, day("2009-03-08"), day("2009-03-12")),
+				new LegDto(V400, HAMBURG, STOCKHOLM, day("2009-03-14"), day("2009-03-15")))).get());
 
 		assertThat(delivery().getRoutingStatus()).isEqualTo(ROUTED);
 
@@ -197,7 +197,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getTransportStatus()).isEqualTo(ONBOARD_CARRIER);
 		assertThat(delivery().isMisdirected()).isFalse();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(UNLOAD, HAMBURG, Optional.of(V300)));
+				.contains(new HandlingActivityDto(UNLOAD, HAMBURG, Optional.of(V300)));
 
 		// Unload in Hamburg
 		handle("2009-03-12", V300, HAMBURG, UNLOAD);
@@ -207,7 +207,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getTransportStatus()).isEqualTo(IN_PORT);
 		assertThat(delivery().isMisdirected()).isFalse();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(LOAD, HAMBURG, Optional.of(V400)));
+				.contains(new HandlingActivityDto(LOAD, HAMBURG, Optional.of(V400)));
 
 		// Load in Hamburg
 		handle("2009-03-14", V400, HAMBURG, LOAD);
@@ -217,7 +217,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getTransportStatus()).isEqualTo(ONBOARD_CARRIER);
 		assertThat(delivery().isMisdirected()).isFalse();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(UNLOAD, STOCKHOLM, Optional.of(V400)));
+				.contains(new HandlingActivityDto(UNLOAD, STOCKHOLM, Optional.of(V400)));
 
 		// Unload in Stockholm
 		handle("2009-03-15", V400, STOCKHOLM, UNLOAD);
@@ -227,7 +227,7 @@ public class CargoLifecycleScenarioTest {
 		assertThat(delivery().getTransportStatus()).isEqualTo(IN_PORT);
 		assertThat(delivery().isMisdirected()).isFalse();
 		assertThat(delivery().getNextExpectedActivity())
-				.contains(new HandlingActivityDTO(CLAIM, STOCKHOLM, Optional.empty()));
+				.contains(new HandlingActivityDto(CLAIM, STOCKHOLM, Optional.empty()));
 
 		// Finally, cargo is claimed in Stockholm. This ends the cargo lifecycle from our perspective.
 		handle("2009-03-16", STOCKHOLM, CLAIM);

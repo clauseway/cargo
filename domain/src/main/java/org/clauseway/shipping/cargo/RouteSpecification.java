@@ -20,6 +20,7 @@ import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.relations.Rows;
+import org.clauseway.shipping.cargo.dto.RouteSpecificationDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
@@ -36,7 +37,7 @@ public final class RouteSpecification implements Schema<RouteSpecification> {
 	}
 
 	/** The cargo specified as given, as a fact. */
-	static RouteSpecification of(String trackingId, RouteSpecificationDTO spec) {
+	static RouteSpecification of(String trackingId, RouteSpecificationDto spec) {
 		return new RouteSpecification(lval(trackingId), lval(spec.getOrigin()), lval(spec.getDestination()),
 				lval(spec.getArrivalDeadline()));
 	}
@@ -68,7 +69,7 @@ public final class RouteSpecification implements Schema<RouteSpecification> {
 	}
 
 	/** A ground row as the value. */
-	public RouteSpecificationDTO toDto() {
-		return new RouteSpecificationDTO(value(origin), value(destination), value(arrivalDeadline));
+	public RouteSpecificationDto toDto() {
+		return new RouteSpecificationDto(value(origin), value(destination), value(arrivalDeadline));
 	}
 }

@@ -12,7 +12,7 @@ import static se.citerus.dddsample.application.util.DateUtils.toDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class DivergenceTest {
 
@@ -55,10 +55,10 @@ public class DivergenceTest {
 		Worlds w = new Worlds();
 		w.book("ABC", HONGKONG, NEWYORK, toDate("2009-03-30"));
 		w.assignToRoute("ABC", List.of(
-				new LegDTO("V100", HONGKONG, TOKYO, toDate("2009-03-03"), toDate("2009-03-05")),
-				new LegDTO("V300", TOKYO, MELBOURNE, toDate("2009-03-08"), toDate("2009-03-18")),
-				new LegDTO("V300", MELBOURNE, TOKYO, toDate("2009-03-19"), toDate("2009-03-21")),
-				new LegDTO("V200", TOKYO, NEWYORK, toDate("2009-03-22"), toDate("2009-03-25"))));
+				new LegDto("V100", HONGKONG, TOKYO, toDate("2009-03-03"), toDate("2009-03-05")),
+				new LegDto("V300", TOKYO, MELBOURNE, toDate("2009-03-08"), toDate("2009-03-18")),
+				new LegDto("V300", MELBOURNE, TOKYO, toDate("2009-03-19"), toDate("2009-03-21")),
+				new LegDto("V200", TOKYO, NEWYORK, toDate("2009-03-22"), toDate("2009-03-25"))));
 		w.handle("ABC", RECEIVE, HONGKONG, Optional.empty(), toDate("2009-03-01"));
 		w.handle("ABC", LOAD, HONGKONG, Optional.of("V100"), toDate("2009-03-03"));
 		w.handle("ABC", LOAD, TOKYO, Optional.of("V200"), toDate("2009-03-22"));

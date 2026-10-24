@@ -20,6 +20,7 @@ import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.relations.Rows;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
@@ -44,7 +45,7 @@ public final class Leg implements Schema<Leg> {
 	}
 
 	/** The leg at an index of the cargo's itinerary, as a fact. */
-	static Leg of(String trackingId, int index, LegDTO leg) {
+	static Leg of(String trackingId, int index, LegDto leg) {
 		return new Leg(lval(trackingId), lval(index), lval(leg.getVoyageNumber()), lval(leg.getLoadLocation()),
 				lval(leg.getUnloadLocation()), lval(leg.getLoadTime()), lval(leg.getUnloadTime()));
 	}
@@ -79,7 +80,7 @@ public final class Leg implements Schema<Leg> {
 	}
 
 	/** A ground row as the value; the index is the itinerary's, not the leg's. */
-	public LegDTO toDto() {
-		return new LegDTO(value(voyageNumber), value(loadLocation), value(unloadLocation), value(loadTime), value(unloadTime));
+	public LegDto toDto() {
+		return new LegDto(value(voyageNumber), value(loadLocation), value(unloadLocation), value(loadTime), value(unloadTime));
 	}
 }

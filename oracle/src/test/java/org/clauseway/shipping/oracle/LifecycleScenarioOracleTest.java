@@ -12,7 +12,7 @@ import static se.citerus.dddsample.application.util.DateUtils.toDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class LifecycleScenarioOracleTest {
 
@@ -32,9 +32,9 @@ public class LifecycleScenarioOracleTest {
 		w.assertAgree(id);
 
 		w.assignToRoute(id, List.of(
-				new LegDTO("V100", HONGKONG, NEWYORK, toDate("2009-03-03"), toDate("2009-03-09")),
-				new LegDTO("V200", NEWYORK, CHICAGO, toDate("2009-03-10"), toDate("2009-03-14")),
-				new LegDTO("V200", CHICAGO, STOCKHOLM, toDate("2009-03-07"), toDate("2009-03-11"))));
+				new LegDto("V100", HONGKONG, NEWYORK, toDate("2009-03-03"), toDate("2009-03-09")),
+				new LegDto("V200", NEWYORK, CHICAGO, toDate("2009-03-10"), toDate("2009-03-14")),
+				new LegDto("V200", CHICAGO, STOCKHOLM, toDate("2009-03-07"), toDate("2009-03-11"))));
 		w.assertAgree(id);
 
 		w.handle(id, RECEIVE, HONGKONG, Optional.empty(), toDate("2009-03-01"));
@@ -47,8 +47,8 @@ public class LifecycleScenarioOracleTest {
 		w.specifyNewRoute(id, TOKYO, STOCKHOLM, toDate("2009-03-18"));
 		w.assertAgree(id);
 		w.assignToRoute(id, List.of(
-				new LegDTO("V300", TOKYO, HAMBURG, toDate("2009-03-08"), toDate("2009-03-12")),
-				new LegDTO("V400", HAMBURG, STOCKHOLM, toDate("2009-03-14"), toDate("2009-03-15"))));
+				new LegDto("V300", TOKYO, HAMBURG, toDate("2009-03-08"), toDate("2009-03-12")),
+				new LegDto("V400", HAMBURG, STOCKHOLM, toDate("2009-03-14"), toDate("2009-03-15"))));
 		w.assertAgree(id);
 
 		w.handle(id, LOAD, TOKYO, Optional.of("V300"), toDate("2009-03-08"));

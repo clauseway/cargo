@@ -18,7 +18,7 @@ import se.citerus.dddsample.domain.model.voyage.Voyage;
 import se.citerus.dddsample.infrastructure.sampledata.SampleLocations;
 import se.citerus.dddsample.infrastructure.sampledata.SampleVoyages;
 import org.clauseway.shipping.handling.HandlingType;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 final class Ours {
 
@@ -63,7 +63,7 @@ final class Ours {
 		commit(s -> s.bookCargo(trackingId, origin, destination, deadline));
 	}
 
-	void assignToRoute(String trackingId, List<LegDTO> legs) {
+	void assignToRoute(String trackingId, List<LegDto> legs) {
 		commit(s -> s.assignToRoute(trackingId, legs));
 	}
 

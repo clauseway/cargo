@@ -16,6 +16,7 @@ import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
 import org.clauseway.shipping.handling.HandlingType;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
@@ -56,7 +57,7 @@ public final class HandlingActivity implements Schema<HandlingActivity> {
 	}
 
 	/** A ground row as the value; the step is the plan's, not the activity's. */
-	public HandlingActivityDTO toDto() {
-		return new HandlingActivityDTO(value(type), value(location), value(voyageNumber).toOptional());
+	public HandlingActivityDto toDto() {
+		return new HandlingActivityDto(value(type), value(location), value(voyageNumber).toOptional());
 	}
 }

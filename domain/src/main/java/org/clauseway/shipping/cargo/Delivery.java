@@ -38,6 +38,8 @@ import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Rows;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
+import org.clauseway.shipping.cargo.dto.DeliveryDto;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
 import org.clauseway.shipping.handling.HandlingType;
 
 @With
@@ -147,15 +149,15 @@ public class Delivery implements Schema<Delivery> {
 	}
 
 	/** A ground row as the value: absence as empty, the next activity from its three columns. */
-	public DeliveryDTO toDto() {
-		return new DeliveryDTO(
+	public DeliveryDto toDto() {
+		return new DeliveryDto(
 				value(routingStatus),
 				value(transportStatus),
 				value(lastKnownLocation).toOptional(),
 				value(currentVoyage).toOptional(),
 				value(misdirected),
 				value(eta).toOptional(),
-				value(nextType).toOptional().map(type -> new HandlingActivityDTO(type,
+				value(nextType).toOptional().map(type -> new HandlingActivityDto(type,
 						value(nextLocation).toOptional().get(),
 						value(nextVoyage).toOptional())),
 				value(unloadedAtDestination));

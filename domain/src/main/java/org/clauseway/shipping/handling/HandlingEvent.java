@@ -56,7 +56,7 @@ public final class HandlingEvent implements Schema<HandlingEvent> {
 	}
 
 	/** A ground row as the value. */
-	public HandlingEventDTO toDto() {
-		return new HandlingEventDTO(value(type), value(location), value(voyageNumber).toOptional(), value(completed));
+	public HandlingEventDto toDto() {
+		return new HandlingEventDto(value(type), value(location), value(voyageNumber).toOptional(), value(completed));
 	}
 }

@@ -12,7 +12,7 @@ import static org.clauseway.shipping.cargo.RoutingStatus.ROUTED;
 import java.time.Instant;
 import java.util.Arrays;
 import org.junit.Test;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public class RouteSpecificationTest {
 
@@ -35,8 +35,8 @@ public class RouteSpecificationTest {
 				.withCarrierMovement("V002", NEWYORK, CHICAGO, hour(12), hour(20))
 				.bookCargo("ABC", origin, destination, deadline).get()
 				.assignToRoute("ABC", Arrays.asList(
-						new LegDTO("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
-						new LegDTO("V002", NEWYORK, CHICAGO, hour(12), hour(20)))).get();
+						new LegDto("V001", HONGKONG, NEWYORK, hour(1), hour(10)),
+						new LegDto("V002", NEWYORK, CHICAGO, hour(12), hour(20)))).get();
 	}
 
 	@Test

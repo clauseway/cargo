@@ -18,8 +18,7 @@ import org.clauseway.shipping.handling.History;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
 import org.clauseway.vavr.control.Try;
-import org.clauseway.shipping.handling.HandlingEventDTO;
-import org.clauseway.shipping.cargo.LegDTO;
+import org.clauseway.shipping.cargo.dto.LegDto;
 
 public final class Shipping implements AutoCloseable {
 
@@ -119,7 +118,7 @@ public final class Shipping implements AutoCloseable {
 	}
 
 	/** BookingService.assignCargoToRoute. */
-	public Try<Shipping> assignToRoute(String trackingId, List<LegDTO> legs) {
+	public Try<Shipping> assignToRoute(String trackingId, List<LegDto> legs) {
 		return cargo.route(trackingId, legs).map(Shipping::new);
 	}
 
