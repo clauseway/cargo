@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.Command;
@@ -154,26 +155,26 @@ public final class Cargo {
 	// -- the facts and rows the commands land and retract --------------------
 
 	/** The legs of one itinerary the other does not have at the same index, as facts. */
-	private static List<Literal<?>> legsDiffering(AnswerSource db, String trackingId, List<LegDto> legs, List<LegDto> other) {
+	private static List<External<?>> legsDiffering(AnswerSource db, String trackingId, List<LegDto> legs, List<LegDto> other) {
 		return IntStream.range(0, legs.size())
 				.filter(i -> i >= other.size() || !legs.get(i).equals(other.get(i)))
-				.mapToObj(i -> (Literal<?>) Leg.of(trackingId, i, legs.get(i)).stored(db))
+				.mapToObj(i -> (External<?>) Leg.of(trackingId, i, legs.get(i)).stored(db))
 				.collect(Collectors.toList());
 	}
 
 	/** A handling as the cargo keeps it, as a fact. */
-	private static Literal<?> shown(AnswerSource db, String trackingId, HandlingEventDto event) {
+	private static External<?> shown(AnswerSource db, String trackingId, HandlingEventDto event) {
 		return lastHandling(db, lval(trackingId), lval(event.getType()), lval(event.getLocation()),
 				LOption.of(event.getVoyageNumber()), lval(event.getCompletionTime()));
 	}
 
 	/** Whatever handling the cargo holds, as a clearing takes it. */
-	private static Literal<?> anyHandling(AnswerSource db, String trackingId) {
+	private static External<?> anyHandling(AnswerSource db, String trackingId) {
 		return lastHandling(db, lval(trackingId), lvar(), lvar(), lvar(), lvar());
 	}
 
 	/** A fact that may be absent, as the list a write door takes. */
-	private static List<Literal<?>> rows(Optional<? extends Literal<?>> fact) {
-		return fact.map(Collections::<Literal<?>>singletonList).orElse(Collections.emptyList());
+	private static List<External<?>> rows(Optional<? extends External<?>> fact) {
+		return fact.map(Collections::<External<?>>singletonList).orElse(Collections.emptyList());
 	}
 }

@@ -23,6 +23,7 @@ import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
@@ -46,7 +47,7 @@ public final class History {
 	 * voyage. A handling reported twice is two rows; every rule projects the
 	 * registration time away, so it is one event.
 	 */
-	static Literal<?> handlingEvent(AnswerSource db, Unifiable<String> trackingId,
+	static External<?> handlingEvent(AnswerSource db, Unifiable<String> trackingId,
 			Unifiable<HandlingType> type, Unifiable<String> location, Unifiable<LOption<String>> voyageNumber,
 			Unifiable<Instant> completionTime, Unifiable<Instant> registrationTime) {
 		return Literal.relation(History.class, "handlingEvent")
@@ -89,7 +90,7 @@ public final class History {
 	}
 
 	/** Whether a handling kind names a voyage: the enum's flag, as a relation over its own facts. */
-	private static Literal<?> handlingKind(AnswerSource table, Unifiable<HandlingType> type,
+	private static External<?> handlingKind(AnswerSource table, Unifiable<HandlingType> type,
 			Unifiable<Boolean> voyageRequired) {
 		return Literal.relation(History.class, "handlingKind")
 				.args(Schema.builder()
@@ -102,7 +103,7 @@ public final class History {
 	private static final AnswerStore HANDLING_KINDS = AnswerStore.empty().asserting(
 			Arrays.stream(HandlingType.values())
 					.map(type -> handlingKind(null, lval(type), lval(type.requiresVoyage())))
-					.toArray(Literal<?>[]::new));
+					.toArray(External<?>[]::new));
 
 	/**
 	 * HandlingEventFactory and the HandlingEvent constructors as one

@@ -8,6 +8,7 @@ import static org.clauseway.pldb.relations.Projected.projected;
 
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
@@ -15,7 +16,7 @@ import org.clauseway.pldb.transaction.Transaction;
 public final class Locations {
 
 	/** A port, by UN/LOCODE. */
-	static Literal<?> location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
+	static External<?> location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
 		return Literal.relation(Locations.class, "location")
 				.args(Schema.builder()
 						.arg("unlocode", unlocode).indexed()

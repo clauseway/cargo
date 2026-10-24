@@ -33,6 +33,7 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
@@ -105,7 +106,7 @@ public class Delivery implements Schema<Delivery> {
 	// -- the two faces: stored, and derived from the rules -------------------
 
 	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
-	Literal<Delivery> stored(AnswerSource db) {
+	External<Delivery> stored(AnswerSource db) {
 		return Literal.relation(Delivery.class, "delivery").args(this).from(db);
 	}
 

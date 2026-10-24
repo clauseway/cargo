@@ -16,6 +16,7 @@ import lombok.With;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
@@ -63,7 +64,7 @@ public final class RouteSpecification implements Schema<RouteSpecification> {
 	}
 
 	/** The specification as stored: one row per cargo, replaced whole when the customer re-specifies. */
-	Literal<RouteSpecification> stored(AnswerSource db) {
+	External<RouteSpecification> stored(AnswerSource db) {
 		return Literal.relation(RouteSpecification.class, "routeSpecification").args(this).from(db);
 	}
 

@@ -16,6 +16,7 @@ import lombok.With;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
@@ -74,7 +75,7 @@ public final class Leg implements Schema<Leg> {
 	}
 
 	/** The legs as stored; the index is the itinerary's order. */
-	Literal<Leg> stored(AnswerSource db) {
+	External<Leg> stored(AnswerSource db) {
 		return Literal.relation(Leg.class, "leg").args(this).from(db);
 	}
 

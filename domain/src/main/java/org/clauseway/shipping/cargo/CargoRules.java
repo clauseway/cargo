@@ -27,6 +27,7 @@ import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.handling.HandlingType;
@@ -38,7 +39,7 @@ public final class CargoRules {
 	// -- the essential state: the cargo and its last handling here, the specification and the legs as rows, the delivery its own ---------
 
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
-	static Literal<?> cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
+	static External<?> cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
 		return Literal.relation(Cargo.class, "cargo")
 				.args(Schema.builder()
 						.arg("trackingId", trackingId).indexed()
@@ -48,7 +49,7 @@ public final class CargoRules {
 	}
 
 	/** The handling the cargo was last shown — Delivery.lastEvent; replaced when an inspection brings a later one. */
-	static Literal<?> lastHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
+	static External<?> lastHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return Literal.relation(Cargo.class, "lastHandling")
 				.args(Schema.builder()
@@ -327,7 +328,7 @@ public final class CargoRules {
 	// -- the delivery: where the cargo is, whether it strayed, what comes next ---
 
 	/** The transport status each handling kind leaves the cargo in: a lookup, as a relation over its own facts. */
-	private static Literal<?> transportOf(AnswerSource table, Unifiable<HandlingType> type,
+	private static External<?> transportOf(AnswerSource table, Unifiable<HandlingType> type,
 			Unifiable<TransportStatus> status) {
 		return Literal.relation(CargoRules.class, "transportOf")
 				.args(Schema.builder()

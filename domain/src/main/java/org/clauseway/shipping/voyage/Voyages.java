@@ -11,6 +11,7 @@ import java.time.Instant;
 import org.clauseway.logic.finitedomain.Instants;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
+import org.clauseway.pldb.relations.External;
 import org.clauseway.pldb.relations.Literal;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
@@ -18,7 +19,7 @@ import org.clauseway.pldb.transaction.Transaction;
 public final class Voyages {
 
 	/** A voyage, by number; its schedule is the carrier movements naming it. */
-	static Literal<?> voyage(AnswerSource db, Unifiable<String> voyageNumber) {
+	static External<?> voyage(AnswerSource db, Unifiable<String> voyageNumber) {
 		return Literal.relation(Voyages.class, "voyage")
 				.args(Schema.builder()
 						.arg("voyageNumber", voyageNumber).indexed()
@@ -27,7 +28,7 @@ public final class Voyages {
 	}
 
 	/** One sailing of a voyage: from a port at a time, to a port at a time. */
-	static Literal<?> carrierMovement(AnswerSource db, Unifiable<String> voyageNumber,
+	static External<?> carrierMovement(AnswerSource db, Unifiable<String> voyageNumber,
 			Unifiable<String> departureLocation, Unifiable<String> arrivalLocation,
 			Unifiable<Instant> departureTime, Unifiable<Instant> arrivalTime) {
 		return Literal.relation(Voyages.class, "carrierMovement")
