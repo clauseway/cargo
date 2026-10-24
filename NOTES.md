@@ -1087,7 +1087,7 @@ would meet it in the table; and the refresh, select then retract then
 assert for one key, is the half of a materialized view the engine does
 not name yet.
 
-## 17. A row type is a mapper: variables in, the value out, and the engine never rebuilds it
+## 17. A row type is a selector: variables in, the value out, and the engine never rebuilds it
 
 Entry 16 ended with the ten names said three times, the fields, the
 builder application and the value mapping, and `Delivery` as the row's
@@ -1114,10 +1114,10 @@ give a field one type that serves both ends lied in one direction. The
 row type is not a term; it is the Java interop layer, and the merged
 type Java needs already exists in the engine: the variable, which enters
 the goal as itself and reads the answer as the key of a `Solution`. So a
-row type is a mapper, the variables it is built from and the mapping of
+row type is a selector, the variables it is built from and the mapping of
 one solution over them into the value, and that is important enough to
-be the engine's: `Mapper<D>` landed in logic's `Query` API, `select(row)`
-streams the values, and pldb's `Schema<D>` is a Mapper that also names
+be the engine's: `Selector<D>` landed in logic's `Query` API, `select(row)`
+streams the values, and pldb's `Schema<D>` is a Selector that also names
 its columns for the literal head.
 
 What it looks like here. `Delivery implements Schema<DeliveryDto>`: the
@@ -1127,7 +1127,7 @@ its field, and the flattening of three columns into a `HandlingActivityDto`
 is three lines of it, which no rebuild could have expressed. A read is
 `Query.of(delivery.stored(db)).select(delivery).stream()`, and the
 `toDto` calls at every read site are gone with the method. A wide cell is
-refused at the solution before the mapper sees it, with the field named,
+refused at the solution before the selector sees it, with the field named,
 and a `projected()` member selected by mistake is refused the same way,
 as the open cell it is. The probes are constructor calls with
 `projected()` per column, since nothing rebuilds a row any more. The
@@ -1152,7 +1152,7 @@ as the template" is now `replacing(stored, derived)` on the transaction,
 the door the engine grew for it, and the typed `Question.select` is gone.
 Entry 16's three sayings of the names stand, with the middle one a list.
 
-What it cost the engine, and what it did not. `Mapper` is one interface
+What it cost the engine, and what it did not. `Selector` is one interface
 and one `select` overload; `Selection` became generic in what it streams
 and `solutions()` became `stream()`; `Solution.decided()` is the gate.
 `Structural` is untouched, and `Term.unifiable()` stays for the term
