@@ -1159,3 +1159,24 @@ and `solutions()` became `stream()`; `Solution.decided()` is the gate.
 tier. The engine's `select` deduplicates by default where `solve` did
 not; every read here wants distinct rows, so nothing changed, and the
 `all()` reading is one call away if one ever does not.
+
+## 18. A row describes itself once; anonymous rows are named on the literal
+
+What changed in pldb. The literal builder is a chain of staged types:
+`relation(ns, name)` then `schema(row)` or `arg(name, x)…`, then the
+backend; a flag before a column, a column after a typed row, or a literal
+without a backend does not compile. `Schema.describe()` names a row's
+columns over its fields in one chain; `keys()` and `columns()` come from it.
+
+What it did here. 37 anonymous relations lost the `schema(Schema.builder()
+…build())` wrapper. Five row types lost their two position-aligned lists for
+one chain pairing each name with its field. 187 lines in, 314 out; no read
+site or rule body moved.
+
+Amends entry 17: the names are still said three times, but the second is
+now the pairing, so a name over the wrong field is visible where written.
+
+Not done: `Schema<D>` as a value with the mapping as a lambda. It would
+type a literal by its value (`Literal<Tuple2<Integer, LegDto>>`) instead
+of its relation (`Literal<Leg>`), and `replacing(stored, derived)` would
+lose its compile-time row match. Deferred.
