@@ -6,15 +6,12 @@ package org.clauseway.shipping.handling;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
-import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
@@ -33,18 +30,14 @@ public final class HandlingEvent implements Schema<HandlingEventDto> {
 	}
 
 	@Override
-	public Iterable<? extends Unifiable<?>> keys() {
-		return Arrays.asList(trackingId, type, location, voyageNumber, completed);
-	}
-
-	@Override
-	public List<Property<?>> columns() {
-		return Arrays.asList(
-				Property.of("trackingId"),
-				Property.of("type"),
-				Property.of("location"),
-				Property.of("voyageNumber"),
-				Property.of("completed"));
+	public Schema.Anonymous describe() {
+		return Schema.builder()
+				.arg("trackingId", trackingId)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completed", completed)
+				.build();
 	}
 
 	/** A solution as the value. */

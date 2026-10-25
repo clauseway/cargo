@@ -10,7 +10,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 
 public final class Locations {
@@ -18,19 +17,15 @@ public final class Locations {
 	/** A port, by UN/LOCODE. */
 	static External<?> location(AnswerSource db, Unifiable<String> unlocode, Unifiable<String> name) {
 		return Literal.relation(Locations.class, "location")
-				.args(Schema.builder()
-						.arg("unlocode", unlocode).indexed()
-						.arg("name", name)
-						.build())
+				.arg("unlocode", unlocode).indexed()
+				.arg("name", name)
 				.from(db);
 	}
 
 	/** The port is known. */
 	public static Literal<?> known(AnswerSource db, Unifiable<String> unlocode) {
 		return Literal.relation(Locations.class, "known")
-				.args(Schema.builder()
-						.arg("unlocode", unlocode)
-						.build())
+				.arg("unlocode", unlocode)
 				.solving(location(db, unlocode, projected()));
 	}
 

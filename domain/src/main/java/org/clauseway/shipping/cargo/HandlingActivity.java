@@ -5,8 +5,6 @@ package org.clauseway.shipping.cargo;
 
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import java.util.Arrays;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
@@ -15,7 +13,6 @@ import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.terms.Unifiable;
-import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
 import org.clauseway.shipping.handling.HandlingType;
@@ -36,18 +33,14 @@ public final class HandlingActivity implements Schema<Tuple2<Integer, HandlingAc
 	}
 
 	@Override
-	public Iterable<? extends Unifiable<?>> keys() {
-		return Arrays.asList(trackingId, step, type, location, voyageNumber);
-	}
-
-	@Override
-	public List<Property<?>> columns() {
-		return Arrays.asList(
-				Property.of("trackingId"),
-				Property.of("step"),
-				Property.of("type"),
-				Property.of("location"),
-				Property.of("voyageNumber"));
+	public Schema.Anonymous describe() {
+		return Schema.builder()
+				.arg("trackingId", trackingId)
+				.arg("step", step)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.build();
 	}
 
 	/** A solution as the handling at its step: the step is the plan's, not the activity's, so it rides beside the value. */

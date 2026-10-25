@@ -7,8 +7,6 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
@@ -17,7 +15,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.cargo.dto.RouteSpecificationDto;
 
@@ -42,22 +39,18 @@ public final class RouteSpecification implements Schema<RouteSpecificationDto> {
 	}
 
 	@Override
-	public Iterable<? extends Unifiable<?>> keys() {
-		return Arrays.asList(trackingId, origin, destination, arrivalDeadline);
-	}
-
-	@Override
-	public List<Property<?>> columns() {
-		return Arrays.asList(
-				Property.of("trackingId").indexed(),
-				Property.of("origin"),
-				Property.of("destination"),
-				Property.of("arrivalDeadline"));
+	public Schema.Anonymous describe() {
+		return Schema.builder()
+				.arg("trackingId", trackingId).indexed()
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("arrivalDeadline", arrivalDeadline)
+				.build();
 	}
 
 	/** The specification as stored: one row per cargo, replaced whole when the customer re-specifies. */
 	External<RouteSpecification> stored(AnswerSource db) {
-		return Literal.relation(RouteSpecification.class, "routeSpecification").args(this).from(db);
+		return Literal.relation(RouteSpecification.class, "routeSpecification").schema(this).from(db);
 	}
 
 	/** A solution as the value. */

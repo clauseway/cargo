@@ -29,7 +29,6 @@ import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.inmemory.AnswerStore;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.handling.HandlingType;
 import org.clauseway.shipping.location.Locations;
 import org.clauseway.shipping.voyage.Voyages;
@@ -41,10 +40,8 @@ public final class CargoRules {
 	/** A booked cargo, by tracking id; the origin never changes after booking. */
 	static External<?> cargo(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin) {
 		return Literal.relation(Cargo.class, "cargo")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId).indexed()
-						.arg("origin", origin)
-						.build())
+				.arg("trackingId", trackingId).indexed()
+				.arg("origin", origin)
 				.from(db);
 	}
 
@@ -52,13 +49,11 @@ public final class CargoRules {
 	static External<?> lastHandling(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber, Unifiable<Instant> completed) {
 		return Literal.relation(Cargo.class, "lastHandling")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId).indexed()
-						.arg("type", type)
-						.arg("location", location)
-						.arg("voyageNumber", voyageNumber)
-						.arg("completed", completed)
-						.build())
+				.arg("trackingId", trackingId).indexed()
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
+				.arg("completed", completed)
 				.from(db);
 	}
 
@@ -67,9 +62,7 @@ public final class CargoRules {
 	/** The cargo is booked. */
 	public static Literal<?> known(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "known")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(cargo(db, trackingId, projected()));
 	}
 
@@ -78,15 +71,13 @@ public final class CargoRules {
 	/** The cargo is routed: it has at least one leg. */
 	public static Literal<?> anyLeg(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "anyLeg")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(Leg.probe(trackingId).stored(db));
 	}
 
 	/** The itinerary's first leg: the one at index 0. */
 	public static Literal<Leg> firstLeg(AnswerSource db, Leg leg) {
-		return Literal.relation(CargoRules.class, "firstLeg").args(leg)
+		return Literal.relation(CargoRules.class, "firstLeg").schema(leg)
 				.solving(leg.stored(db).and(leg.index.unifies(0)));
 	}
 
@@ -94,10 +85,8 @@ public final class CargoRules {
 	public static Literal<?> lastIndex(AnswerSource db, Unifiable<String> trackingId, Unifiable<Integer> index) {
 		Unifiable<Integer> next = lvar();
 		return Literal.relation(CargoRules.class, "lastIndex")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("index", index)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("index", index)
 				.solving(Leg.probe(trackingId).withIndex(index).stored(db)
 						.and(Ints.addo(index, lval(1), next))
 						.and(exclude(Leg.probe(trackingId).withIndex(next).stored(db))));
@@ -105,7 +94,7 @@ public final class CargoRules {
 
 	/** The itinerary's last leg. */
 	public static Literal<Leg> lastLeg(AnswerSource db, Leg leg) {
-		return Literal.relation(CargoRules.class, "lastLeg").args(leg)
+		return Literal.relation(CargoRules.class, "lastLeg").schema(leg)
 				.solving(leg.stored(db).and(lastIndex(db, leg.trackingId, leg.index)));
 	}
 
@@ -120,7 +109,7 @@ public final class CargoRules {
 		Unifiable<Integer> index = lvar();
 		Unifiable<Integer> twice = lvar();
 		Unifiable<String> legVoyage = lvar();
-		return Literal.relation(CargoRules.class, "plannedHandling").args(planned)
+		return Literal.relation(CargoRules.class, "plannedHandling").schema(planned)
 				.solving(planned.type.unifies(HandlingType.RECEIVE)
 						.and(firstLeg(db, new Leg(planned.trackingId, projected(), projected(), planned.location, projected(), projected(), projected())))
 						.and(planned.step.unifies(0))
@@ -150,12 +139,10 @@ public final class CargoRules {
 	public static Literal<?> expected(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
 		return Literal.relation(CargoRules.class, "expected")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("type", type)
-						.arg("location", location)
-						.arg("voyageNumber", voyageNumber)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
 				.solving(exclude(anyLeg(db, trackingId))
 						.or(plannedHandling(db, new HandlingActivity(trackingId, projected(), type, location, voyageNumber)))
 						.or(type.unifies(HandlingType.CUSTOMS)));
@@ -167,11 +154,9 @@ public final class CargoRules {
 	public static Literal<?> specificationDenial(AnswerSource db, Unifiable<String> origin, Unifiable<String> destination,
 			Unifiable<String> reason) {
 		return Literal.relation(CargoRules.class, "specificationDenial")
-				.args(Schema.builder()
-						.arg("origin", origin)
-						.arg("destination", destination)
-						.arg("reason", reason)
-						.build())
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
 				.solving(exclude(Locations.known(db, origin))
 						.and(reason.unifies("unknown origin"))
 						.or(exclude(Locations.known(db, destination))
@@ -184,12 +169,10 @@ public final class CargoRules {
 	public static Literal<?> bookingDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin,
 			Unifiable<String> destination, Unifiable<String> reason) {
 		return Literal.relation(CargoRules.class, "bookingDenial")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("origin", origin)
-						.arg("destination", destination)
-						.arg("reason", reason)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
 				.solving(cargo(db, trackingId, projected())
 						.and(reason.unifies("already booked"))
 						.or(specificationDenial(db, origin, destination, reason)));
@@ -198,10 +181,8 @@ public final class CargoRules {
 	/** Cargo.assignToRoute's denial: the cargo must exist. */
 	public static Literal<?> routingDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> reason) {
 		return Literal.relation(CargoRules.class, "routingDenial")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("reason", reason)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("reason", reason)
 				.solving(exclude(cargo(db, trackingId, projected()))
 						.and(reason.unifies("unknown cargo")));
 	}
@@ -210,12 +191,10 @@ public final class CargoRules {
 	public static Literal<?> legDenial(AnswerSource db, Unifiable<String> voyageNumber, Unifiable<String> loadLocation,
 			Unifiable<String> unloadLocation, Unifiable<String> reason) {
 		return Literal.relation(CargoRules.class, "legDenial")
-				.args(Schema.builder()
-						.arg("voyageNumber", voyageNumber)
-						.arg("loadLocation", loadLocation)
-						.arg("unloadLocation", unloadLocation)
-						.arg("reason", reason)
-						.build())
+				.arg("voyageNumber", voyageNumber)
+				.arg("loadLocation", loadLocation)
+				.arg("unloadLocation", unloadLocation)
+				.arg("reason", reason)
 				.solving(exclude(Voyages.known(db, voyageNumber))
 						.and(reason.unifies("unknown voyage"))
 						.or(exclude(Locations.known(db, loadLocation))
@@ -228,12 +207,10 @@ public final class CargoRules {
 	public static Literal<?> reroutingDenial(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> origin,
 			Unifiable<String> destination, Unifiable<String> reason) {
 		return Literal.relation(CargoRules.class, "reroutingDenial")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("origin", origin)
-						.arg("destination", destination)
-						.arg("reason", reason)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("origin", origin)
+				.arg("destination", destination)
+				.arg("reason", reason)
 				.solving(routingDenial(db, trackingId, reason)
 						.or(specificationDenial(db, origin, destination, reason)));
 	}
@@ -248,9 +225,7 @@ public final class CargoRules {
 		Unifiable<Instant> deadline = lvar();
 		Unifiable<Instant> finalArrival = lvar();
 		return Literal.relation(CargoRules.class, "satisfied")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(new RouteSpecification(trackingId, origin, destination, deadline).stored(db)
 						.and(firstLeg(db, new Leg(trackingId, projected(), projected(), origin, projected(), projected(), projected())))
 						.and(lastLeg(db, new Leg(trackingId, projected(), projected(), projected(), destination, projected(), finalArrival)))
@@ -269,13 +244,11 @@ public final class CargoRules {
 			Unifiable<String> destination, Unifiable<Instant> deadline,
 			Unifiable<LList<CandidateLeg>> legs) {
 		return Literal.relation(CargoRules.class, "path")
-				.args(Schema.builder()
-						.arg("from", from)
-						.arg("connection", connection)
-						.arg("destination", destination)
-						.arg("deadline", deadline)
-						.arg("legs", legs)
-						.build())
+				.arg("from", from)
+				.arg("connection", connection)
+				.arg("destination", destination)
+				.arg("deadline", deadline)
+				.arg("legs", legs)
 				.solving(defer(() -> {
 					Unifiable<String> voyageNumber = lvar();
 					Unifiable<String> to = lvar();
@@ -304,10 +277,8 @@ public final class CargoRules {
 		Unifiable<String> destination = lvar();
 		Unifiable<Instant> deadline = lvar();
 		return Literal.relation(CargoRules.class, "candidate")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("legs", legs)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("legs", legs)
 				.solving(new RouteSpecification(trackingId, origin, destination, deadline).stored(db)
 						.and(path(db, origin, none(), destination, deadline, legs)));
 	}
@@ -315,10 +286,8 @@ public final class CargoRules {
 	/** Not routed without an itinerary; routed when it satisfies the specification; misrouted otherwise. */
 	public static Literal<?> routingStatus(AnswerSource db, Unifiable<String> trackingId, Unifiable<RoutingStatus> status) {
 		return Literal.relation(CargoRules.class, "routingStatus")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("status", status)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("status", status)
 				.solving(exclude(anyLeg(db, trackingId)).and(status.unifies(RoutingStatus.NOT_ROUTED))
 						.or(satisfied(db, trackingId).and(status.unifies(RoutingStatus.ROUTED)))
 						.or(anyLeg(db, trackingId).and(exclude(satisfied(db, trackingId)))
@@ -331,10 +300,8 @@ public final class CargoRules {
 	private static External<?> transportOf(AnswerSource table, Unifiable<HandlingType> type,
 			Unifiable<TransportStatus> status) {
 		return Literal.relation(CargoRules.class, "transportOf")
-				.args(Schema.builder()
-						.arg("type", type)
-						.arg("status", status)
-						.build())
+				.arg("type", type)
+				.arg("status", status)
 				.from(table);
 	}
 
@@ -348,19 +315,15 @@ public final class CargoRules {
 	/** The cargo has been shown a handling at all. */
 	private static Literal<?> handled(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "handled")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(lastHandling(db, trackingId, projected(), projected(), projected(), projected()));
 	}
 
 	/** Not received until handled; afterwards, wherever the last handling left it. */
 	public static Literal<?> transportStatus(AnswerSource db, Unifiable<String> trackingId, Unifiable<TransportStatus> status) {
 		return Literal.relation(CargoRules.class, "transportStatus")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("status", status)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("status", status)
 				.solving(exclude(handled(db, trackingId)).and(status.unifies(TransportStatus.NOT_RECEIVED))
 						.or(defer(() -> {
 							Unifiable<HandlingType> type = lvar();
@@ -372,29 +335,23 @@ public final class CargoRules {
 	/** Where the cargo was last handled. */
 	public static Literal<?> lastKnownLocation(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> location) {
 		return Literal.relation(CargoRules.class, "lastKnownLocation")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("location", location)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("location", location)
 				.solving(lastHandling(db, trackingId, projected(), location, projected(), projected()));
 	}
 
 	/** The voyage the cargo is aboard: the one it was last loaded onto, while loaded. */
 	public static Literal<?> currentVoyage(AnswerSource db, Unifiable<String> trackingId, Unifiable<String> voyageNumber) {
 		return Literal.relation(CargoRules.class, "currentVoyage")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("voyageNumber", voyageNumber)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("voyageNumber", voyageNumber)
 				.solving(lastHandling(db, trackingId, lval(HandlingType.LOAD), projected(), some(voyageNumber), projected()));
 	}
 
 	/** The last handling is one the itinerary does not account for. */
 	public static Literal<?> misdirected(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "misdirected")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(defer(() -> {
 					Unifiable<HandlingType> type = lvar();
 					Unifiable<String> location = lvar();
@@ -407,9 +364,7 @@ public final class CargoRules {
 	/** Routed as specified and not misdirected. */
 	public static Literal<?> onTrack(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "onTrack")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(routingStatus(db, trackingId, lval(RoutingStatus.ROUTED))
 						.and(exclude(misdirected(db, trackingId))));
 	}
@@ -417,10 +372,8 @@ public final class CargoRules {
 	/** The estimated arrival: the last leg's unload time, while on track. */
 	public static Literal<?> eta(AnswerSource db, Unifiable<String> trackingId, Unifiable<Instant> time) {
 		return Literal.relation(CargoRules.class, "eta")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("time", time)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("time", time)
 				.solving(onTrack(db, trackingId)
 						.and(lastLeg(db, new Leg(trackingId, projected(), projected(), projected(), projected(), projected(), time))));
 	}
@@ -428,9 +381,7 @@ public final class CargoRules {
 	/** The last handling was an unload at the specified destination. */
 	public static Literal<?> unloadedAtDestination(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(CargoRules.class, "unloadedAtDestination")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.build())
+				.arg("trackingId", trackingId)
 				.solving(defer(() -> {
 					Unifiable<String> location = lvar();
 					return lastHandling(db, trackingId, lval(HandlingType.UNLOAD), location, projected(), projected())
@@ -446,12 +397,10 @@ public final class CargoRules {
 	public static Literal<?> nextExpectedActivity(AnswerSource db, Unifiable<String> trackingId, Unifiable<HandlingType> type,
 			Unifiable<String> location, Unifiable<LOption<String>> voyageNumber) {
 		return Literal.relation(CargoRules.class, "nextExpectedActivity")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("type", type)
-						.arg("location", location)
-						.arg("voyageNumber", voyageNumber)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("type", type)
+				.arg("location", location)
+				.arg("voyageNumber", voyageNumber)
 				.solving(onTrack(db, trackingId)
 						.and(exclude(handled(db, trackingId))
 								.and(plannedHandling(db, new HandlingActivity(trackingId, lval(0), type, location, voyageNumber)))
@@ -471,10 +420,8 @@ public final class CargoRules {
 	/** CargoInspectionService: the notices the stored delivery warrants — misdirected, arrived at its destination. */
 	public static Literal<?> notice(AnswerSource db, Unifiable<String> trackingId, Unifiable<Notice> notice) {
 		return Literal.relation(CargoRules.class, "notice")
-				.args(Schema.builder()
-						.arg("trackingId", trackingId)
-						.arg("notice", notice)
-						.build())
+				.arg("trackingId", trackingId)
+				.arg("notice", notice)
 				.solving(Delivery.probe(trackingId).withMisdirected(lval(true)).stored(db)
 						.and(notice.unifies(Notice.MISDIRECTED))
 						.or(Delivery.probe(trackingId).withUnloadedAtDestination(lval(true)).stored(db)

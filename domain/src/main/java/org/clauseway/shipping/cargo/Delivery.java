@@ -22,8 +22,6 @@ import static org.clauseway.shipping.cargo.CargoRules.transportStatus;
 import static org.clauseway.shipping.cargo.CargoRules.unloadedAtDestination;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
@@ -34,7 +32,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.dto.DeliveryDto;
@@ -73,32 +70,27 @@ public class Delivery implements Schema<DeliveryDto> {
 	// -- the schema: the keys the head is over, the columns, the value ---------------
 
 	@Override
-	public Iterable<? extends Unifiable<?>> keys() {
-		return Arrays.asList(trackingId, routingStatus, transportStatus, lastKnownLocation, currentVoyage, misdirected,
-				eta, nextType, nextLocation, nextVoyage, unloadedAtDestination);
-	}
-
-	@Override
-	public List<Property<?>> columns() {
-		return Arrays.asList(
-				Property.of("trackingId").indexed(),
-				Property.of("routingStatus"),
-				Property.of("transportStatus"),
-				Property.of("lastKnownLocation"),
-				Property.of("currentVoyage"),
-				Property.of("misdirected"),
-				Property.of("eta"),
-				Property.of("nextType"),
-				Property.of("nextLocation"),
-				Property.of("nextVoyage"),
-				Property.of("unloadedAtDestination"));
+	public Schema.Anonymous describe() {
+		return Schema.builder()
+				.arg("trackingId", trackingId).indexed()
+				.arg("routingStatus", routingStatus)
+				.arg("transportStatus", transportStatus)
+				.arg("lastKnownLocation", lastKnownLocation)
+				.arg("currentVoyage", currentVoyage)
+				.arg("misdirected", misdirected)
+				.arg("eta", eta)
+				.arg("nextType", nextType)
+				.arg("nextLocation", nextLocation)
+				.arg("nextVoyage", nextVoyage)
+				.arg("unloadedAtDestination", unloadedAtDestination)
+				.build();
 	}
 
 	// -- the two faces: stored, and derived from the rules -------------------
 
 	/** The delivery as stored: one row per cargo, the absent fields as none; replaced whole by every command. */
 	External<Delivery> stored(AnswerSource db) {
-		return Literal.relation(Delivery.class, "delivery").args(this).from(db);
+		return Literal.relation(Delivery.class, "delivery").schema(this).from(db);
 	}
 
 	/**
@@ -108,7 +100,7 @@ public class Delivery implements Schema<DeliveryDto> {
 	 * the predicates to booleans; the rules themselves stay partial for each other.
 	 */
 	public Literal<Delivery> derived(AnswerSource db) {
-		return Literal.relation(Delivery.class, "derived").args(this)
+		return Literal.relation(Delivery.class, "derived").schema(this)
 				.solving(routingStatus(db, trackingId, routingStatus)
 						.and(transportStatus(db, trackingId, transportStatus))
 						.and(option(location -> lastKnownLocation(db, trackingId, location), lastKnownLocation))

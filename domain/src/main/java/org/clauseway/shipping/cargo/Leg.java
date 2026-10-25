@@ -8,8 +8,6 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.Projected.projected;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
@@ -20,7 +18,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Property;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.cargo.dto.LegDto;
 
@@ -53,25 +50,21 @@ public final class Leg implements Schema<Tuple2<Integer, LegDto>> {
 	}
 
 	@Override
-	public Iterable<? extends Unifiable<?>> keys() {
-		return Arrays.asList(trackingId, index, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime);
-	}
-
-	@Override
-	public List<Property<?>> columns() {
-		return Arrays.asList(
-				Property.of("trackingId").indexed(),
-				Property.of("index"),
-				Property.of("voyageNumber"),
-				Property.of("loadLocation"),
-				Property.of("unloadLocation"),
-				Property.of("loadTime"),
-				Property.of("unloadTime"));
+	public Schema.Anonymous describe() {
+		return Schema.builder()
+				.arg("trackingId", trackingId).indexed()
+				.arg("index", index)
+				.arg("voyageNumber", voyageNumber)
+				.arg("loadLocation", loadLocation)
+				.arg("unloadLocation", unloadLocation)
+				.arg("loadTime", loadTime)
+				.arg("unloadTime", unloadTime)
+				.build();
 	}
 
 	/** The legs as stored; the index is the itinerary's order. */
 	External<Leg> stored(AnswerSource db) {
-		return Literal.relation(Leg.class, "leg").args(this).from(db);
+		return Literal.relation(Leg.class, "leg").schema(this).from(db);
 	}
 
 	/** A solution as the leg at its index: the index is the itinerary's, not the leg's, so it rides beside the value. */

@@ -13,7 +13,6 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
 import org.clauseway.pldb.relations.literals.Literal;
-import org.clauseway.pldb.relations.Schema;
 import org.clauseway.pldb.transaction.Transaction;
 
 public final class Voyages {
@@ -21,9 +20,7 @@ public final class Voyages {
 	/** A voyage, by number; its schedule is the carrier movements naming it. */
 	static External<?> voyage(AnswerSource db, Unifiable<String> voyageNumber) {
 		return Literal.relation(Voyages.class, "voyage")
-				.args(Schema.builder()
-						.arg("voyageNumber", voyageNumber).indexed()
-						.build())
+				.arg("voyageNumber", voyageNumber).indexed()
 				.from(db);
 	}
 
@@ -32,22 +29,18 @@ public final class Voyages {
 			Unifiable<String> departureLocation, Unifiable<String> arrivalLocation,
 			Unifiable<Instant> departureTime, Unifiable<Instant> arrivalTime) {
 		return Literal.relation(Voyages.class, "carrierMovement")
-				.args(Schema.builder()
-						.arg("voyageNumber", voyageNumber).indexed()
-						.arg("departureLocation", departureLocation).indexed()
-						.arg("arrivalLocation", arrivalLocation).indexed()
-						.arg("departureTime", departureTime)
-						.arg("arrivalTime", arrivalTime)
-						.build())
+				.arg("voyageNumber", voyageNumber).indexed()
+				.arg("departureLocation", departureLocation).indexed()
+				.arg("arrivalLocation", arrivalLocation).indexed()
+				.arg("departureTime", departureTime)
+				.arg("arrivalTime", arrivalTime)
 				.from(db);
 	}
 
 	/** The voyage is known. */
 	public static Literal<?> known(AnswerSource db, Unifiable<String> voyageNumber) {
 		return Literal.relation(Voyages.class, "known")
-				.args(Schema.builder()
-						.arg("voyageNumber", voyageNumber)
-						.build())
+				.arg("voyageNumber", voyageNumber)
 				.solving(voyage(db, voyageNumber));
 	}
 
@@ -59,13 +52,11 @@ public final class Voyages {
 	public static Literal<?> aboard(AnswerSource db, Unifiable<String> voyageNumber, Unifiable<String> loadLocation,
 			Unifiable<String> unloadLocation, Unifiable<Instant> loadTime, Unifiable<Instant> unloadTime) {
 		return Literal.relation(Voyages.class, "aboard")
-				.args(Schema.builder()
-						.arg("voyageNumber", voyageNumber)
-						.arg("loadLocation", loadLocation)
-						.arg("unloadLocation", unloadLocation)
-						.arg("loadTime", loadTime)
-						.arg("unloadTime", unloadTime)
-						.build())
+				.arg("voyageNumber", voyageNumber)
+				.arg("loadLocation", loadLocation)
+				.arg("unloadLocation", unloadLocation)
+				.arg("loadTime", loadTime)
+				.arg("unloadTime", unloadTime)
 				.solving(carrierMovement(db, voyageNumber, loadLocation, unloadLocation, loadTime, unloadTime)
 						.or(defer(() -> {
 							Unifiable<String> port = lvar();
