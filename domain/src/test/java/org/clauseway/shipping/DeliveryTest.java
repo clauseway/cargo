@@ -5,9 +5,11 @@ package org.clauseway.shipping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
+import static org.clauseway.shipping.Hours.hour;
 import static org.clauseway.shipping.handling.HandlingType.LOAD;
 import static org.clauseway.shipping.handling.HandlingType.RECEIVE;
-import static org.clauseway.shipping.Hours.hour;
+import static org.clauseway.shipping.handling.HandlingType.UNLOAD;
 
 import java.util.Arrays;
 import java.util.List;
@@ -17,13 +19,13 @@ import org.clauseway.logic.solving.Query;
 import org.clauseway.pldb.inmemory.SharedDatabase;
 import org.clauseway.pldb.transaction.Transaction;
 import org.clauseway.shipping.cargo.Delivery;
-import org.junit.Test;
-import org.clauseway.shipping.cargo.dto.DeliveryDto;
-import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
-import org.clauseway.shipping.handling.HandlingType;
-import org.clauseway.shipping.cargo.dto.LegDto;
 import org.clauseway.shipping.cargo.RoutingStatus;
 import org.clauseway.shipping.cargo.TransportStatus;
+import org.clauseway.shipping.cargo.dto.DeliveryDto;
+import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
+import org.clauseway.shipping.cargo.dto.LegDto;
+import org.clauseway.shipping.handling.HandlingType;
+import org.junit.Test;
 
 public class DeliveryTest {
 
@@ -80,4 +82,19 @@ public class DeliveryTest {
 				RoutingStatus.NOT_ROUTED, TransportStatus.NOT_RECEIVED, Optional.empty(), Optional.empty(),
 				false, Optional.empty(), Optional.empty(), false));
 	}
+
+	@Test
+	public void shouldListAllMisdirected() {
+		SharedDatabase store = underway();
+		Transaction db = Transaction.recording(store.open("read"));
+		Delivery delivery = Delivery.fresh(lvar()).withMisdirected(lval(false));
+		assertThat(Query.of(delivery.derived(db)).select(delivery)
+				.stream()
+				.collect(Collectors.toList()))
+				.containsExactly(new DeliveryDto(
+						RoutingStatus.ROUTED, TransportStatus.ONBOARD_CARRIER, Optional.of(SHANGHAI), Optional.of(VOYAGE),
+						false, Optional.of(hour(4)), Optional.of(new HandlingActivityDto(HandlingType.UNLOAD, ROTTERDAM, Optional.of(VOYAGE))),
+						false));
+	}
+
 }

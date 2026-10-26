@@ -14,6 +14,7 @@ import static org.clauseway.pldb.relations.literals.Literal.option;
 import static org.clauseway.pldb.relations.Projected.projected;
 import static org.clauseway.shipping.cargo.CargoRules.currentVoyage;
 import static org.clauseway.shipping.cargo.CargoRules.eta;
+import static org.clauseway.shipping.cargo.CargoRules.known;
 import static org.clauseway.shipping.cargo.CargoRules.lastKnownLocation;
 import static org.clauseway.shipping.cargo.CargoRules.misdirected;
 import static org.clauseway.shipping.cargo.CargoRules.nextExpectedActivity;
@@ -101,7 +102,8 @@ public class Delivery implements Schema<DeliveryDto> {
 	 */
 	public Literal<Delivery> derived(AnswerSource db) {
 		return Literal.relation(Delivery.class, "derived").schema(this)
-				.solving(routingStatus(db, trackingId, routingStatus)
+				.solving(known(db, trackingId)
+						.and(routingStatus(db, trackingId, routingStatus))
 						.and(transportStatus(db, trackingId, transportStatus))
 						.and(option(location -> lastKnownLocation(db, trackingId, location), lastKnownLocation))
 						.and(option(voyage -> currentVoyage(db, trackingId, voyage), currentVoyage))
