@@ -10,7 +10,7 @@ import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
-import org.clauseway.logic.solving.Solution;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
@@ -55,7 +55,7 @@ public final class RouteSpecification implements Schema<RouteSpecificationDto> {
 
 	/** A solution as the value. */
 	@Override
-	public RouteSpecificationDto map(Solution s) {
+	public RouteSpecificationDto map(Row s) {
 		return new RouteSpecificationDto(s.get(origin).get(), s.get(destination).get(), s.get(arrivalDeadline).get());
 	}
 }

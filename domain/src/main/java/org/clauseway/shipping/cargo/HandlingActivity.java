@@ -11,7 +11,7 @@ import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import org.clauseway.logic.solving.Solution;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Schema;
 import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
@@ -45,7 +45,7 @@ public final class HandlingActivity implements Schema<Tuple2<Integer, HandlingAc
 
 	/** A solution as the handling at its step: the step is the plan's, not the activity's, so it rides beside the value. */
 	@Override
-	public Tuple2<Integer, HandlingActivityDto> map(Solution s) {
+	public Tuple2<Integer, HandlingActivityDto> map(Row s) {
 		return Tuple.of(s.get(step).get(),
 				new HandlingActivityDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional()));
 	}

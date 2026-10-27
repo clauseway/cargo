@@ -10,7 +10,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.logic.solving.Solution;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Schema;
 
@@ -42,7 +42,7 @@ public final class HandlingEvent implements Schema<HandlingEventDto> {
 
 	/** A solution as the value. */
 	@Override
-	public HandlingEventDto map(Solution s) {
+	public HandlingEventDto map(Row s) {
 		return new HandlingEventDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional(),
 				s.get(completed).get());
 	}

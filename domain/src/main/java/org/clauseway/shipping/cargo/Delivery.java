@@ -28,7 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.With;
 import org.clauseway.logic.solving.Query;
-import org.clauseway.logic.solving.Solution;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -136,7 +136,7 @@ public class Delivery implements Schema<DeliveryDto> {
 
 	/** A solution as the value: absence as empty, the next activity from its three columns. */
 	@Override
-	public DeliveryDto map(Solution s) {
+	public DeliveryDto map(Row s) {
 		return new DeliveryDto(
 				s.get(routingStatus).get(),
 				s.get(transportStatus).get(),

@@ -13,7 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import org.clauseway.logic.solving.Solution;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
@@ -69,7 +69,7 @@ public final class Leg implements Schema<Tuple2<Integer, LegDto>> {
 
 	/** A solution as the leg at its index: the index is the itinerary's, not the leg's, so it rides beside the value. */
 	@Override
-	public Tuple2<Integer, LegDto> map(Solution s) {
+	public Tuple2<Integer, LegDto> map(Row s) {
 		return Tuple.of(s.get(index).get(), new LegDto(s.get(voyageNumber).get(),
 				s.get(loadLocation).get(), s.get(unloadLocation).get(), s.get(loadTime).get(), s.get(unloadTime).get()));
 	}
