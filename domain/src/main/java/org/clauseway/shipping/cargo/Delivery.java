@@ -27,6 +27,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.With;
+import org.clauseway.logic.solving.Query;
 import org.clauseway.logic.solving.Solution;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.unification.terms.Unifiable;
@@ -130,7 +131,7 @@ public class Delivery implements Schema<DeliveryDto> {
 	 */
 	static Transaction refresh(Transaction staged, String trackingId) {
 		Delivery row = fresh(lval(trackingId));
-		return staged.replacing(row.stored(staged), row.derived(staged));
+		return staged.replacing(row.stored(staged), Query.of(row.derived(staged)));
 	}
 
 	/** A solution as the value: absence as empty, the next activity from its three columns. */
