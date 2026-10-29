@@ -23,11 +23,9 @@ import org.clauseway.shipping.sql.Schema;
 import org.clauseway.vavr.control.Try;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.clauseway.shipping.cargo.dto.DeliveryDto;
 import org.clauseway.shipping.cargo.dto.HandlingActivityDto;
@@ -52,8 +50,7 @@ public class PostgresWorldTest {
 
 	@BeforeClass
 	public static void startPostgres() {
-		Assume.assumeTrue("Docker unavailable — the Postgres world needs it",
-				DockerClientFactory.instance().isDockerAvailable());
+		DockerGate.require("the Postgres world needs it");
 		postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 		postgres.start();
 	}
