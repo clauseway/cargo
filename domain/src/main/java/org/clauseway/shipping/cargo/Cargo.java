@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
-import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.unification.structures.LOption;
 import org.clauseway.logic.solving.Query;
+import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
 import org.clauseway.pldb.relations.literals.External;
@@ -49,28 +49,28 @@ public final class Cargo {
 	/** The cargo's legs in itinerary order; empty when it is not routed. */
 	public List<LegDto> itineraryOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
-		return Query.of(leg.stored(db)).select(leg).stream()
-				.sorted(Comparator.comparing(Tuple2::_1))
-				.map(Tuple2::_2)
+		return Query.of(leg.stored(db)).select(leg).rows()
+				.sorted(Comparator.comparingInt((Row row) -> row.get(leg.index)))
+				.map(leg::map)
 				.collect(Collectors.toList());
 	}
 
 	public Optional<LegDto> firstLegOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
-		return Query.of(CargoRules.firstLeg(db, leg)).select(leg).stream().map(Tuple2::_2).findFirst();
+		return Query.of(CargoRules.firstLeg(db, leg)).select(leg).stream().findFirst();
 	}
 
 	public Optional<LegDto> lastLegOf(String trackingId) {
 		Leg leg = Leg.fresh(lval(trackingId));
-		return Query.of(CargoRules.lastLeg(db, leg)).select(leg).stream().map(Tuple2::_2).findFirst();
+		return Query.of(CargoRules.lastLeg(db, leg)).select(leg).stream().findFirst();
 	}
 
 	/** The handlings the cargo's itinerary plans, in order; empty when it is not routed. */
 	public List<HandlingActivityDto> planOf(String trackingId) {
 		HandlingActivity planned = HandlingActivity.fresh(lval(trackingId));
-		return Query.of(CargoRules.plannedHandling(db, planned)).select(planned).stream()
-				.sorted(Comparator.comparing(Tuple2::_1))
-				.map(Tuple2::_2)
+		return Query.of(CargoRules.plannedHandling(db, planned)).select(planned).rows()
+				.sorted(Comparator.comparingInt((Row row) -> row.get(planned.step)))
+				.map(planned::map)
 				.collect(Collectors.toList());
 	}
 

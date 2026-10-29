@@ -43,7 +43,7 @@ public final class HandlingEvent implements Schema<HandlingEventDto> {
 	/** A solution as the value. */
 	@Override
 	public HandlingEventDto map(Row s) {
-		return new HandlingEventDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional(),
-				s.get(completed).get());
+		return new HandlingEventDto(s.get(type), s.get(location), s.get(voyageNumber).toOptional(),
+				s.get(completed));
 	}
 }

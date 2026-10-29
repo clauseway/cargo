@@ -9,8 +9,6 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.With;
 import org.clauseway.logic.unification.structures.LOption;
-import org.clauseway.functional.tuples.Tuple;
-import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.solving.Row;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.relations.Schema;
@@ -19,7 +17,7 @@ import org.clauseway.shipping.handling.HandlingType;
 
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 @With
-public final class HandlingActivity implements Schema<Tuple2<Integer, HandlingActivityDto>> {
+public final class HandlingActivity implements Schema<HandlingActivityDto> {
 
 	final Unifiable<String> trackingId;
 	final Unifiable<Integer> step;
@@ -43,10 +41,9 @@ public final class HandlingActivity implements Schema<Tuple2<Integer, HandlingAc
 				.build();
 	}
 
-	/** A solution as the handling at its step: the step is the plan's, not the activity's, so it rides beside the value. */
+	/** A row as the handling; the step is the plan's, not the activity's, and stays on the row. */
 	@Override
-	public Tuple2<Integer, HandlingActivityDto> map(Row s) {
-		return Tuple.of(s.get(step).get(),
-				new HandlingActivityDto(s.get(type).get(), s.get(location).get(), s.get(voyageNumber).get().toOptional()));
+	public HandlingActivityDto map(Row s) {
+		return new HandlingActivityDto(s.get(type), s.get(location), s.get(voyageNumber).toOptional());
 	}
 }

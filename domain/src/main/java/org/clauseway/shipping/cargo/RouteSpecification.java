@@ -56,6 +56,6 @@ public final class RouteSpecification implements Schema<RouteSpecificationDto> {
 	/** A solution as the value. */
 	@Override
 	public RouteSpecificationDto map(Row s) {
-		return new RouteSpecificationDto(s.get(origin).get(), s.get(destination).get(), s.get(arrivalDeadline).get());
+		return new RouteSpecificationDto(s.get(origin), s.get(destination), s.get(arrivalDeadline));
 	}
 }

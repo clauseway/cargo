@@ -138,15 +138,15 @@ public class Delivery implements Schema<DeliveryDto> {
 	@Override
 	public DeliveryDto map(Row s) {
 		return new DeliveryDto(
-				s.get(routingStatus).get(),
-				s.get(transportStatus).get(),
-				s.get(lastKnownLocation).get().toOptional(),
-				s.get(currentVoyage).get().toOptional(),
-				s.get(misdirected).get(),
-				s.get(eta).get().toOptional(),
-				s.get(nextType).get().toOptional().map(type -> new HandlingActivityDto(type,
-						s.get(nextLocation).get().toOptional().get(),
-						s.get(nextVoyage).get().toOptional())),
-				s.get(unloadedAtDestination).get());
+				s.get(routingStatus),
+				s.get(transportStatus),
+				s.get(lastKnownLocation).toOptional(),
+				s.get(currentVoyage).toOptional(),
+				s.get(misdirected),
+				s.get(eta).toOptional(),
+				s.get(nextType).toOptional().map(type -> new HandlingActivityDto(type,
+						s.get(nextLocation).toOptional().get(),
+						s.get(nextVoyage).toOptional())),
+				s.get(unloadedAtDestination));
 	}
 }
