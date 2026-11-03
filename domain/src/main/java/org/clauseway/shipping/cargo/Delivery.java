@@ -11,7 +11,7 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.clauseway.pldb.relations.literals.Literal.flag;
 import static org.clauseway.pldb.relations.literals.Literal.option;
-import static org.clauseway.pldb.relations.Projected.projected;
+import static org.clauseway.pldb.relations.Ignored.ignored;
 import static org.clauseway.shipping.cargo.CargoRules.currentVoyage;
 import static org.clauseway.shipping.cargo.CargoRules.eta;
 import static org.clauseway.shipping.cargo.CargoRules.known;
@@ -65,8 +65,8 @@ public class Delivery implements Schema<DeliveryDto> {
 
 	/** The cargo's row with every column projected away: the row a rule probes, naming only the columns it cares about. */
 	public static Delivery probe(Unifiable<String> trackingId) {
-		return new Delivery(trackingId, projected(), projected(), projected(), projected(), projected(), projected(),
-				projected(), projected(), projected(), projected());
+		return new Delivery(trackingId, ignored(), ignored(), ignored(), ignored(), ignored(), ignored(),
+				ignored(), ignored(), ignored(), ignored());
 	}
 
 	// -- the schema: the keys the head is over, the columns, the value ---------------
@@ -116,7 +116,7 @@ public class Delivery implements Schema<DeliveryDto> {
 							return nextExpectedActivity(db, trackingId, type, location, nextVoyage)
 									.and(nextType.unifies(some(type)))
 									.and(nextLocation.unifies(some(location)));
-						}).or(exclude(nextExpectedActivity(db, trackingId, projected(), projected(), projected()))
+						}).or(exclude(nextExpectedActivity(db, trackingId, ignored(), ignored(), ignored()))
 								.and(nextType.unifies(none()))
 								.and(nextLocation.unifies(none()))
 								.and(nextVoyage.unifies(none()))))

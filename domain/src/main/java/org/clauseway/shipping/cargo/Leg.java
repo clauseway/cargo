@@ -5,7 +5,7 @@ package org.clauseway.shipping.cargo;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.pldb.relations.Projected.projected;
+import static org.clauseway.pldb.relations.Ignored.ignored;
 
 import java.time.Instant;
 import lombok.AccessLevel;
@@ -38,7 +38,7 @@ public final class Leg implements Schema<LegDto> {
 
 	/** The cargo's legs with every column projected away: the row a rule probes, naming only the columns it cares about. */
 	static Leg probe(Unifiable<String> trackingId) {
-		return new Leg(trackingId, projected(), projected(), projected(), projected(), projected(), projected());
+		return new Leg(trackingId, ignored(), ignored(), ignored(), ignored(), ignored(), ignored());
 	}
 
 	/** The leg at an index of the cargo's itinerary, as a fact. */
