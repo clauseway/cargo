@@ -10,7 +10,7 @@ import static org.clauseway.logic.unification.structures.LOption.none;
 import static org.clauseway.logic.unification.structures.LOption.some;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.clauseway.pldb.relations.Projected.projected;
+import static org.clauseway.pldb.relations.Ignored.ignored;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -62,14 +62,14 @@ public final class History {
 	/** A handling of the cargo as it happened: the kind, the port, the voyage, the completion; a report repeated is one event. */
 	public static Literal<HandlingEvent> event(AnswerSource db, HandlingEvent event) {
 		return Literal.relation(History.class, "event").schema(event)
-				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected()));
+				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, ignored()));
 	}
 
 	/** The cargo has been handled at all. */
 	public static Literal<?> anyEvent(AnswerSource db, Unifiable<String> trackingId) {
 		return Literal.relation(History.class, "anyEvent")
 				.arg("trackingId", trackingId)
-				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), projected(), projected()));
+				.solving(handlingEvent(db, trackingId, ignored(), ignored(), ignored(), ignored(), ignored()));
 	}
 
 	/** Some handling of the cargo completed after the given time. */
@@ -78,7 +78,7 @@ public final class History {
 		return Literal.relation(History.class, "later")
 				.arg("trackingId", trackingId)
 				.arg("time", time)
-				.solving(handlingEvent(db, trackingId, projected(), projected(), projected(), completed, projected())
+				.solving(handlingEvent(db, trackingId, ignored(), ignored(), ignored(), completed, ignored())
 						.and(Instants.lss(time, completed)));
 	}
 
@@ -127,7 +127,7 @@ public final class History {
 	/** The most recently completed handling: an event with none later. */
 	public static Literal<HandlingEvent> lastEvent(AnswerSource db, HandlingEvent event) {
 		return Literal.relation(History.class, "lastEvent").schema(event)
-				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, projected())
+				.solving(handlingEvent(db, event.trackingId, event.type, event.location, event.voyageNumber, event.completed, ignored())
 						.and(exclude(later(db, event.trackingId, event.completed))));
 	}
 
