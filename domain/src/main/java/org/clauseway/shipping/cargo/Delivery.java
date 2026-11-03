@@ -63,12 +63,6 @@ public class Delivery implements Schema<DeliveryDto> {
 		return new Delivery(trackingId, lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
-	/** The cargo's row with every column projected away: the row a rule probes, naming only the columns it cares about. */
-	public static Delivery probe(Unifiable<String> trackingId) {
-		return new Delivery(trackingId, ignored(), ignored(), ignored(), ignored(), ignored(), ignored(),
-				ignored(), ignored(), ignored(), ignored());
-	}
-
 	// -- the schema: the keys the head is over, the columns, the value ---------------
 
 	@Override
