@@ -4,7 +4,7 @@ package org.clauseway.shipping.location;
 // ABOUTME: package alone writes; other aggregates read it through its rules.
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
-import static org.clauseway.pldb.relations.Ignored.ignored;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.pldb.AnswerSource;
@@ -26,7 +26,7 @@ public final class Locations {
 	public static Literal<?> known(AnswerSource db, Unifiable<String> unlocode) {
 		return Literal.relation(Locations.class, "known")
 				.arg("unlocode", unlocode)
-				.solving(location(db, unlocode, ignored()));
+				.solving(location(db, unlocode, lvar()));
 	}
 
 	/** A port declared: the fact lands. */

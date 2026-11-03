@@ -31,12 +31,12 @@ public final class Leg implements Schema<LegDto> {
 	final Unifiable<Instant> loadTime;
 	final Unifiable<Instant> unloadTime;
 
-	/** The cargo's legs with every column a fresh variable: the row a read selects. */
+	/** The cargo's legs with every column a fresh variable: the row a read selects, and the row a rule body probes. */
 	public static Leg fresh(Unifiable<String> trackingId) {
 		return new Leg(trackingId, lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
-	/** The cargo's legs with every column projected away: the row a rule probes, naming only the columns it cares about. */
+	/** The cargo's legs with every column projected away: the row a rule denies, naming only the columns it cares about. */
 	static Leg probe(Unifiable<String> trackingId) {
 		return new Leg(trackingId, ignored(), ignored(), ignored(), ignored(), ignored(), ignored());
 	}
