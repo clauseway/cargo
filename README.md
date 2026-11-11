@@ -25,6 +25,12 @@ every file. If you know what a `Delivery` is and why `Cargo` is an
 aggregate, you can read this repository without reading the engine's
 documentation first.
 
+The essay that argues for this stack, the development notes and the
+tutorial are at [clauseway.org](https://clauseway.org/): start with the
+[blog](https://clauseway.org/blog/) or the
+[tutorial](https://clauseway.org/tutorial/), which walks the features over
+this domain.
+
 ## If you know DDD: where the building blocks went
 
 Evans wrote the tactical patterns for object-oriented models and says
